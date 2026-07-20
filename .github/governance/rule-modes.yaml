@@ -1,7 +1,7 @@
 {
   "schema": "l9.rule-modes/v1",
   "defaults": {
-    "pr_fast": "advisory",
+    "pr_fast": "shadow",
     "merge": "blocking",
     "nightly": "advisory",
     "release": "blocking",
