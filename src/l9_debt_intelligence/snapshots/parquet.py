@@ -29,7 +29,7 @@ def write_partition(
     plan: PartitionPlan,
 ) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    columns = {
+    columns: dict[str, list[str | None]] = {
         "record_id": [],
         "source_event_id": [],
         "producer_id": [],

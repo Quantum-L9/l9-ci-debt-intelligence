@@ -244,6 +244,8 @@ class IngestionService:
 
     @staticmethod
     def _map_validation_reason(reason: str | None) -> str:
+        if reason is None:
+            return "incompatible_producer_contract"
         mapping = {
             "ProducerCompatibilityError": "unknown_producer",
             "SDKCompatibilityError": "incompatible_sdk_contract",
