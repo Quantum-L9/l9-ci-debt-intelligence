@@ -1,0 +1,12 @@
+# Ruff configuration — single source of truth for lint + format.
+#
+# Ruff ignores any [tool.ruff] table in pyproject.toml when this file is
+# present, so the linter settings live here (and only here) to stay coherent.
+# Keep these values aligned with the toolchain pins in pyproject.toml
+# ([project.optional-dependencies] dev) and .pre-commit-config.yaml.
+
+target-version = "py311"
+line-length = 88
+
+[lint]
+select = ["E", "F", "I", "UP", "B"]

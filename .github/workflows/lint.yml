@@ -35,3 +35,27 @@ jobs:
         run: ruff check .
       - name: Ruff format check
         run: ruff format --check .
+  mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout immutable event revision
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin \
+            "https://x-access-token:${TOKEN}@github.com/${REPOSITORY}.git"
+          git -c protocol.version=2 fetch --depth=1 origin "${REVISION}"
+          git checkout --detach FETCH_HEAD
+          git remote set-url origin \
+            "https://github.com/${REPOSITORY}.git"
+      - name: Install project and type toolchain
+        run: |
+          python -m pip install --disable-pip-version-check --no-input \
+            -e ".[dev]" -r requirements-ci.txt
+      - name: Mypy static type gate
+        run: python -m mypy

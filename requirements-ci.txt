@@ -1,0 +1,10 @@
+# CI-only type-checking toolchain.
+#
+# Installed on top of `pip install -e ".[dev]"` so the static type gate
+# (`mypy src`) has its runner and the third-party type stubs it needs.
+# pyarrow ships no stubs and is handled via ignore_missing_imports in the
+# [tool.mypy] overrides in pyproject.toml. The package uses stdlib
+# dataclasses (not pydantic), so no pydantic.mypy plugin is required.
+mypy>=1.11
+types-jsonschema>=4.23
+types-PyYAML>=6.0
