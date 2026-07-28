@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Python deps: Dependabot's `uv` ecosystem understands pyproject.toml (PEP 621)
+  # + uv.lock together and keeps them in sync in a single PR.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "deps(uv)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels: ["dependencies", "github-actions"]
+    commit-message:
+      prefix: "ci"
+
