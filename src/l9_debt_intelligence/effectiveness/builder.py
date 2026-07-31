@@ -23,6 +23,8 @@ from .storage import OutcomeStore
 
 def load_pack(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("defense pack must contain a JSON object")
     if value.get("schema_version") != "l9.debt-defense/v1":
         raise ValueError("unsupported defense-pack schema")
     return value

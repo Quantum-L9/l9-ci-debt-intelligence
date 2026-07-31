@@ -10,7 +10,6 @@ requires-python = ">=3.11"
 license = { text = "Proprietary" }
 dependencies = [
   "jsonschema>=4.23,<5",
-  "pydantic>=2.8,<3",
   "PyYAML>=6.0,<7",
   "duckdb>=1.1,<2",
   "pyarrow>=17,<20",
@@ -25,12 +24,20 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
 
-[tool.ruff]
-target-version = "py311"
-line-length = 88
+# Ruff lint/format configuration lives in ruff.toml (single source of truth);
+# a [tool.ruff] table here would be silently ignored while ruff.toml exists.
 
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+
+# pyarrow ships no type stubs or py.typed marker.
+[[tool.mypy.overrides]]
+module = ["pyarrow.*"]
+ignore_missing_imports = true
 
 [project.scripts]
 l9-intelligence = "l9_debt_intelligence.cli:main"

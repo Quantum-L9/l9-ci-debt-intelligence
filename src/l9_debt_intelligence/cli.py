@@ -371,18 +371,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 compatibility_registry=arguments.registry,
                 storage_root=arguments.storage_root,
             )
-            result = service.ingest(event)
-            document = result.as_dict()
-            exit_code = 0 if result.status in {"accepted", "duplicate"} else 3
+            ingestion_result = service.ingest(event)
+            document = ingestion_result.as_dict()
+            exit_code = 0 if ingestion_result.status in {"accepted", "duplicate"} else 3
         elif arguments.command == "verify-store":
             document = verify_store(arguments.storage_root)
             exit_code = 0
         elif arguments.command == "build-snapshot":
-            result = build_snapshot(
+            snapshot_result = build_snapshot(
                 storage_root=arguments.storage_root,
                 snapshots_root=arguments.snapshots_root,
             )
-            document = result.as_dict()
+            document = snapshot_result.as_dict()
             exit_code = 0
         elif arguments.command == "verify-snapshot":
             document = verify_snapshot(arguments.snapshot)
@@ -476,8 +476,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             event = json.loads(arguments.event.read_text(encoding="utf-8"))
             if not isinstance(event, dict):
                 raise ValueError("effectiveness event must be an object")
-            validator = OutcomeValidator(arguments.schema)
-            outcome = validator.validate(event)
+            outcome_validator = OutcomeValidator(arguments.schema)
+            outcome = outcome_validator.validate(event)
             store = OutcomeStore(arguments.store_root)
             document = store.ingest(outcome)
             exit_code = 0

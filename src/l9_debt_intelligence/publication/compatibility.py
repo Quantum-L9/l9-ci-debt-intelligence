@@ -28,6 +28,8 @@ def parse_version(value: str) -> tuple[int, int, int]:
 
 def load_compatibility(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise PublicationGateError("compatibility matrix must be a JSON object")
     if value.get("schema_version") != ("l9.defense-compatibility/v1"):
         raise PublicationGateError("unsupported compatibility matrix schema")
     sdk = value.get("sdk")
