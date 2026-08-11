@@ -6,5 +6,5 @@
 # [tool.mypy] overrides in pyproject.toml. The package uses stdlib
 # dataclasses (not pydantic), so no pydantic.mypy plugin is required.
 mypy>=1.11
-types-jsonschema>=4.23
+types-jsonschema>=4.26.0.20260518
 types-PyYAML>=6.0
