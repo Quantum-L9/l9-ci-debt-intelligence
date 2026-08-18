@@ -12,7 +12,7 @@ dependencies = [
   "jsonschema>=4.23,<5",
   "PyYAML>=6.0,<7",
   "duckdb>=1.1,<2",
-  "pyarrow>=17,<20",
+  "pyarrow>=17,<26",
   "cryptography>=43,<46",
 ]
 
