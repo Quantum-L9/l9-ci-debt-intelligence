@@ -5,6 +5,6 @@
 # pyarrow ships no stubs and is handled via ignore_missing_imports in the
 # [tool.mypy] overrides in pyproject.toml. The package uses stdlib
 # dataclasses (not pydantic), so no pydantic.mypy plugin is required.
-mypy>=1.11
+mypy>=2.3.1
 types-jsonschema>=4.23
 types-PyYAML>=6.0
