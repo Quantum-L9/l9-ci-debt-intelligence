@@ -27,7 +27,7 @@ def fixed_clock() -> dt.datetime:
 class SnapshotBuilderTests(unittest.TestCase):
     def event(self) -> dict:
         return json.loads(
-            (ROOT / "tests/fixtures/producers/valid-core-gate.json").read_text(
+            (ROOT / "tests/fixtures/producers/valid-sdk-finding-bundle.json").read_text(
                 encoding="utf-8"
             )
         )
