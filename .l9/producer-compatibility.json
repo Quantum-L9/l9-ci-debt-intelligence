@@ -1,12 +1,23 @@
 {
   "schema": "l9.producer-compatibility/v1",
+  "_status_contract": "Producers carry an explicit lifecycle status. `active` producers are production-compatible inputs and are admitted by the ingestion contract. `planned` producers are architecture intent only: the named repository does not emit the declared contract, so events claiming it are quarantined exactly as an unknown producer would be. A producer without a status is treated as `active` for backwards compatibility with externally supplied registries.",
   "producers": {
+    "Quantum-L9/l9-ci-sdk": {
+      "status": "active",
+      "event_classes": ["static_finding"],
+      "contract_versions": ["l9.finding-bundle/v1"],
+      "required_sdk_contract": "l9.integration-contract/v1"
+    },
     "Quantum-L9/l9-ci-core": {
+      "status": "planned",
+      "planned_reason": "l9-ci-core does not emit l9.core-gate-event/v1; the token appears only in this repository's own contracts, docs, and fixtures.",
       "event_classes": ["gate_outcome"],
       "contract_versions": ["l9.core-gate-event/v1"],
       "required_sdk_contract": "l9.integration-contract/v1"
     },
     "Quantum-L9/l9-ci-debt-resolver": {
+      "status": "planned",
+      "planned_reason": "l9-ci-debt-resolver does not emit l9.resolver-corpus-event/v1; the token appears only in this repository's own contracts and docs.",
       "event_classes": [
         "CI_failure_classification",
         "repair_attempt",
@@ -16,6 +27,8 @@
       "required_sdk_contract": "l9.integration-contract/v1"
     },
     "Quantum-L9/PR_Repair": {
+      "status": "planned",
+      "planned_reason": "PR_Repair does not emit l9.repair-learning-packet/v1 and is a standalone PR assistant outside the debt pipeline in v0.1.",
       "event_classes": [
         "repair_attempt",
         "verification_outcome"
@@ -24,16 +37,13 @@
       "required_sdk_contract": "l9.integration-contract/v1"
     },
     "Quantum-L9/l9-ci-debt-lsp": {
+      "status": "planned",
+      "planned_reason": "l9-ci-debt-lsp does not emit l9.editor-outcome-event/v1; its active seam is defense-pack consumption, not corpus production.",
       "event_classes": [
         "editor_diagnostic_outcome",
         "false_positive_disposition"
       ],
       "contract_versions": ["l9.editor-outcome-event/v1"],
-      "required_sdk_contract": "l9.integration-contract/v1"
-    },
-    "Quantum-L9/l9-ci-sdk": {
-      "event_classes": ["static_finding"],
-      "contract_versions": ["l9.finding-bundle/v1"],
       "required_sdk_contract": "l9.integration-contract/v1"
     }
   },

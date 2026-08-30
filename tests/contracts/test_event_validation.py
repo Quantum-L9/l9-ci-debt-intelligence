@@ -16,7 +16,7 @@ class EventValidationTests(unittest.TestCase):
             compatibility_registry=(ROOT / ".l9/producer-compatibility.json"),
         )
         self.valid_event = json.loads(
-            (ROOT / "tests/fixtures/producers/valid-core-gate.json").read_text(
+            (ROOT / "tests/fixtures/producers/valid-sdk-finding-bundle.json").read_text(
                 encoding="utf-8"
             )
         )
