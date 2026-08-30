@@ -27,3 +27,13 @@ updates:
     commit-message:
       prefix: "ci"
 
+  # Snapshot extras live outside uv.lock. Track them so duckdb/pyarrow
+  # ranges cannot drift without a Dependabot PR (issue #14).
+  - package-ecosystem: "pip"
+    directory: "/requirements"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "deps(pip)"
+
