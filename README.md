@@ -58,6 +58,7 @@ l9-intelligence validate-event <event.json>
 l9-intelligence ingest-event <event.json> --storage-root <dir>
 l9-intelligence ingest-resolver-feedback <feedback-event.json> --storage-root <dir>
 l9-intelligence verify-store --storage-root <dir>
+l9-intelligence serve-feedback-ingress --storage-root <dir> [--host H] [--port P]
 ```
 
 `ingest-resolver-feedback` takes a native
@@ -67,6 +68,12 @@ transport — projects it onto `l9.corpus-event/v1` with the producer document
 preserved whole in `payload`, and ingests it through the same
 `IngestionService` path as every other producer. See
 [`docs/integration-backlog.md`](docs/integration-backlog.md).
+
+`serve-feedback-ingress` is the same seam over the wire, for the resolver's
+`HTTPSFeedbackTransport`. It serves `POST /api/v1/events`, reads its bearer
+token from `L9_INTELLIGENCE_INGRESS_TOKEN` (never a flag), and **must** run
+behind TLS termination — it terminates no TLS itself, and the resolver refuses
+any endpoint that is not `https://`.
 
 **P2 — snapshots**
 

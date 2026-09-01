@@ -72,6 +72,49 @@ ingestion resolves to the same corpus record with a second ledger observation.
 Retries are bounded by the resolver's outbox, so Intelligence adds no second
 retry mechanism.
 
+### Over the wire
+
+The same adapter serves the resolver's `HTTPSFeedbackTransport`:
+
+```bash
+L9_INTELLIGENCE_INGRESS_TOKEN=<token> \
+  l9-intelligence serve-feedback-ingress --storage-root ./corpus
+```
+
+```
+l9-debt-resolver publish-feedback --transport https \
+  --destination https://<intelligence>/api/v1/events
+        |
+        v
+POST /api/v1/events   bearer auth - Idempotency-Key - 1 MiB body bound
+        |
+        v
+ResolverFeedbackAdapter -> IngestionService -> corpus
+```
+
+The HTTP layer owns no learning logic and, deliberately, **no retry**. The
+producer's transport already classifies every response, so the ingress answers
+only in that vocabulary:
+
+| Status | Meaning | Producer's reading |
+|---|---|---|
+| `201` | accepted | success |
+| `409` | duplicate | success — duplicate acknowledgement |
+| `422` | contract violation, or quarantined at ingestion | permanent → dead-letter |
+| `401` | bearer authentication failed | permanent → dead-letter |
+| `413` | body exceeds the size bound | permanent → dead-letter |
+| `503` | ingestion storage unavailable | retryable → bounded by the outbox |
+
+`401`, `413` and `422` are deliberately *outside* the producer's retryable set:
+retrying a bad credential or a malformed document can never succeed, and would
+burn a bounded outbox budget that a real outage needs. Retry and backoff belong
+to the resolver's durable outbox; a second mechanism here would fight it. A test
+asserts the ingress contains no retry, backoff, or queue construct.
+
+It is built on the standard library — no web framework, so no new runtime
+dependency — and terminates no TLS. The resolver refuses any endpoint that is
+not `https://`, so the ingress is designed to sit behind TLS termination.
+
 ### Not yet: effectiveness
 
 Resolver feedback lands in the **corpus**. It is not routed into
