@@ -17,6 +17,7 @@ from .effectiveness.drift import compare_reports
 from .effectiveness.storage import OutcomeStore
 from .effectiveness.validation import OutcomeValidator
 from .effectiveness.verify import verify_effectiveness_report
+from .ingestion.resolver_feedback import ResolverFeedbackAdapter
 from .ingestion.service import IngestionService
 from .ingestion.verify import verify_store
 from .publication.assembler import assemble_pack
@@ -74,6 +75,38 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     ingest.add_argument("--output", type=Path)
+    resolver_feedback = commands.add_parser(
+        "ingest-resolver-feedback",
+        help=(
+            "Project one native l9.intelligence-feedback-event/v1 document "
+            "onto the corpus envelope and ingest it."
+        ),
+    )
+    resolver_feedback.add_argument("event", type=Path)
+    resolver_feedback.add_argument(
+        "--consumer-schema",
+        type=Path,
+        default=(
+            repository_root()
+            / "schemas/intelligence/consumers/resolver-feedback.schema.json"
+        ),
+    )
+    resolver_feedback.add_argument(
+        "--schema",
+        type=Path,
+        default=repository_root() / "schemas/intelligence/corpus-event.schema.json",
+    )
+    resolver_feedback.add_argument(
+        "--registry",
+        type=Path,
+        default=repository_root() / ".l9/producer-compatibility.json",
+    )
+    resolver_feedback.add_argument(
+        "--storage-root",
+        type=Path,
+        required=True,
+    )
+    resolver_feedback.add_argument("--output", type=Path)
     verify = commands.add_parser(
         "verify-store",
         help="Verify the append-only ingestion store.",
@@ -372,6 +405,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 storage_root=arguments.storage_root,
             )
             ingestion_result = service.ingest(event)
+            document = ingestion_result.as_dict()
+            exit_code = 0 if ingestion_result.status in {"accepted", "duplicate"} else 3
+        elif arguments.command == "ingest-resolver-feedback":
+            native = json.loads(arguments.event.read_text(encoding="utf-8"))
+            if not isinstance(native, dict):
+                raise ValueError("resolver feedback event must be a JSON object")
+            adapter = ResolverFeedbackAdapter(
+                consumer_schema=arguments.consumer_schema,
+            )
+            service = IngestionService(
+                event_schema=arguments.schema,
+                compatibility_registry=arguments.registry,
+                storage_root=arguments.storage_root,
+            )
+            ingestion_result = service.ingest(adapter.project(native))
             document = ingestion_result.as_dict()
             exit_code = 0 if ingestion_result.status in {"accepted", "duplicate"} else 3
         elif arguments.command == "verify-store":

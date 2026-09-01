@@ -56,8 +56,17 @@ document to stdout, or to `--output <path>` when given.
 ```bash
 l9-intelligence validate-event <event.json>
 l9-intelligence ingest-event <event.json> --storage-root <dir>
+l9-intelligence ingest-resolver-feedback <feedback-event.json> --storage-root <dir>
 l9-intelligence verify-store --storage-root <dir>
 ```
+
+`ingest-resolver-feedback` takes a native
+`l9.intelligence-feedback-event/v1` document as `Quantum-L9/l9-ci-debt-resolver`
+emits it — from the resolver's outbox, its JSON-file transport, or its HTTPS
+transport — projects it onto `l9.corpus-event/v1` with the producer document
+preserved whole in `payload`, and ingests it through the same
+`IngestionService` path as every other producer. See
+[`docs/integration-backlog.md`](docs/integration-backlog.md).
 
 **P2 — snapshots**
 
