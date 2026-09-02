@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -17,6 +18,13 @@ from .effectiveness.drift import compare_reports
 from .effectiveness.storage import OutcomeStore
 from .effectiveness.validation import OutcomeValidator
 from .effectiveness.verify import verify_effectiveness_report
+from .ingestion.http_ingress import (
+    DEFAULT_MAX_BODY_BYTES,
+    DEFAULT_PATH,
+    FeedbackIngress,
+    build_server,
+)
+from .ingestion.resolver_feedback import ResolverFeedbackAdapter
 from .ingestion.service import IngestionService
 from .ingestion.verify import verify_store
 from .publication.assembler import assemble_pack
@@ -74,6 +82,76 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     ingest.add_argument("--output", type=Path)
+    resolver_feedback = commands.add_parser(
+        "ingest-resolver-feedback",
+        help=(
+            "Project one native l9.intelligence-feedback-event/v1 document "
+            "onto the corpus envelope and ingest it."
+        ),
+    )
+    resolver_feedback.add_argument("event", type=Path)
+    resolver_feedback.add_argument(
+        "--consumer-schema",
+        type=Path,
+        default=(
+            repository_root()
+            / "schemas/intelligence/consumers/resolver-feedback.schema.json"
+        ),
+    )
+    resolver_feedback.add_argument(
+        "--schema",
+        type=Path,
+        default=repository_root() / "schemas/intelligence/corpus-event.schema.json",
+    )
+    resolver_feedback.add_argument(
+        "--registry",
+        type=Path,
+        default=repository_root() / ".l9/producer-compatibility.json",
+    )
+    resolver_feedback.add_argument(
+        "--storage-root",
+        type=Path,
+        required=True,
+    )
+    resolver_feedback.add_argument("--output", type=Path)
+    ingress = commands.add_parser(
+        "serve-feedback-ingress",
+        help=(
+            "Serve the producer feedback ingress. Terminate TLS in front of "
+            "it; the bearer token is read from L9_INTELLIGENCE_INGRESS_TOKEN."
+        ),
+    )
+    ingress.add_argument("--host", default="127.0.0.1")
+    ingress.add_argument("--port", type=int, default=8080)
+    ingress.add_argument("--path", default=DEFAULT_PATH)
+    ingress.add_argument(
+        "--max-body-bytes",
+        type=int,
+        default=DEFAULT_MAX_BODY_BYTES,
+    )
+    ingress.add_argument(
+        "--consumer-schema",
+        type=Path,
+        default=(
+            repository_root()
+            / "schemas/intelligence/consumers/resolver-feedback.schema.json"
+        ),
+    )
+    ingress.add_argument(
+        "--schema",
+        type=Path,
+        default=repository_root() / "schemas/intelligence/corpus-event.schema.json",
+    )
+    ingress.add_argument(
+        "--registry",
+        type=Path,
+        default=repository_root() / ".l9/producer-compatibility.json",
+    )
+    ingress.add_argument(
+        "--storage-root",
+        type=Path,
+        required=True,
+    )
     verify = commands.add_parser(
         "verify-store",
         help="Verify the append-only ingestion store.",
@@ -374,6 +452,70 @@ def main(argv: Sequence[str] | None = None) -> int:
             ingestion_result = service.ingest(event)
             document = ingestion_result.as_dict()
             exit_code = 0 if ingestion_result.status in {"accepted", "duplicate"} else 3
+        elif arguments.command == "ingest-resolver-feedback":
+            native = json.loads(arguments.event.read_text(encoding="utf-8"))
+            if not isinstance(native, dict):
+                raise ValueError("resolver feedback event must be a JSON object")
+            adapter = ResolverFeedbackAdapter(
+                consumer_schema=arguments.consumer_schema,
+            )
+            service = IngestionService(
+                event_schema=arguments.schema,
+                compatibility_registry=arguments.registry,
+                storage_root=arguments.storage_root,
+            )
+            ingestion_result = service.ingest(adapter.project(native))
+            document = ingestion_result.as_dict()
+            exit_code = 0 if ingestion_result.status in {"accepted", "duplicate"} else 3
+        elif arguments.command == "serve-feedback-ingress":
+            # Never a flag: a token on the command line lands in shell history
+            # and in every process listing on the host.
+            token = os.environ.get("L9_INTELLIGENCE_INGRESS_TOKEN", "")
+            if not token:
+                raise ValueError(
+                    "L9_INTELLIGENCE_INGRESS_TOKEN must be set to serve the "
+                    "feedback ingress"
+                )
+            server = build_server(
+                ingress=FeedbackIngress(
+                    service=IngestionService(
+                        event_schema=arguments.schema,
+                        compatibility_registry=arguments.registry,
+                        storage_root=arguments.storage_root,
+                    ),
+                    adapter=ResolverFeedbackAdapter(
+                        consumer_schema=arguments.consumer_schema,
+                    ),
+                    bearer_token=token,
+                    path=arguments.path,
+                    max_body_bytes=arguments.max_body_bytes,
+                ),
+                host=arguments.host,
+                port=arguments.port,
+            )
+            host, port = server.server_address[:2]
+            print(
+                json.dumps(
+                    {
+                        "schema_version": "l9.ingestion-ingress-start/v1",
+                        "status": "listening",
+                        "host": str(host),
+                        "port": int(port),
+                        "path": arguments.path,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                print("feedback ingress shutting down", file=sys.stderr, flush=True)
+            finally:
+                server.server_close()
+            return 0
         elif arguments.command == "verify-store":
             document = verify_store(arguments.storage_root)
             exit_code = 0

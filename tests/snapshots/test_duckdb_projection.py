@@ -36,9 +36,9 @@ class DuckDBProjectionTests(unittest.TestCase):
             snapshots = root / "snapshots"
             database = root / "analytics/corpus.duckdb"
             event = json.loads(
-                (ROOT / "tests/fixtures/producers/valid-core-gate.json").read_text(
-                    encoding="utf-8"
-                )
+                (
+                    ROOT / "tests/fixtures/producers/valid-sdk-finding-bundle.json"
+                ).read_text(encoding="utf-8")
             )
             service = IngestionService(
                 event_schema=(ROOT / "schemas/intelligence/corpus-event.schema.json"),

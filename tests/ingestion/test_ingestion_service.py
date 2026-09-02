@@ -26,7 +26,7 @@ def fixed_clock() -> dt.datetime:
 class IngestionServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.event = json.loads(
-            (ROOT / "tests/fixtures/producers/valid-core-gate.json").read_text(
+            (ROOT / "tests/fixtures/producers/valid-sdk-finding-bundle.json").read_text(
                 encoding="utf-8"
             )
         )
