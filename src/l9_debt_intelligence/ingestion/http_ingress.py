@@ -19,6 +19,14 @@ runtime dependency, and this surface is far too small to justify one. The
 authoritative dependency set is declared in `pyproject.toml`; this module adds
 nothing to it. There is no in-process TLS either -- the resolver requires an
 `https://` endpoint, so this server is designed to sit behind TLS termination.
+
+The server is deliberately single-request. `FilesystemCorpusStore` is a
+single-writer filesystem store: sequence allocation, record admission, index
+replacement, and ledger append are one ingestion transaction but are not
+protected by a cross-thread lock. Serializing requests at this boundary keeps
+those invariants true without moving HTTP concurrency concerns into the corpus
+store. The resolver's durable outbox already provides bounded retry and absorbs
+backpressure.
 """
 
 from __future__ import annotations
@@ -27,7 +35,7 @@ import hmac
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
 from l9_debt_intelligence.contracts.errors import ContractError
@@ -217,6 +225,7 @@ def build_server(
     ingress: FeedbackIngress,
     host: str,
     port: int,
-) -> ThreadingHTTPServer:
+) -> HTTPServer:
+    """Build a single-request server around the single-writer corpus store."""
     handler = type("BoundHandler", (_Handler,), {"ingress": ingress})
-    return ThreadingHTTPServer((host, port), handler)
+    return HTTPServer((host, port), handler)
