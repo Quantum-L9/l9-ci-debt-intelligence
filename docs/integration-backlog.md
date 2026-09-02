@@ -50,7 +50,8 @@ so failure fingerprint and category, resolution terminal state, validation
 outcome, finding and contract identifiers, capability profile, hashed
 provenance and the idempotency key all survive for downstream learning.
 `lineage.producer_event_hash` is the SHA-256 of the canonical producer document,
-binding the corpus record to the exact bytes the resolver emitted.
+binding the corpus record to the same semantic JSON document independent of key
+order or insignificant whitespace.
 
 Intelligence validates the incoming document against
 `schemas/intelligence/consumers/resolver-feedback.schema.json` — deliberately a
@@ -110,6 +111,12 @@ retrying a bad credential or a malformed document can never succeed, and would
 burn a bounded outbox budget that a real outage needs. Retry and backoff belong
 to the resolver's durable outbox; a second mechanism here would fight it. A test
 asserts the ingress contains no retry, backoff, or queue construct.
+
+The ingress is deliberately single-request because the filesystem corpus store
+is single-writer: sequence allocation, record/index writes, and ledger append
+form one ingestion transaction but are not cross-thread locked. Serializing at
+the HTTP boundary preserves those invariants and lets the resolver's durable
+outbox absorb backpressure without moving concurrency into corpus storage.
 
 It is built on the standard library — no web framework, so no new runtime
 dependency — and terminates no TLS. The resolver refuses any endpoint that is
