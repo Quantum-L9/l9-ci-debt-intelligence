@@ -7,6 +7,8 @@ from typing import Any
 
 from .errors import ProducerCompatibilityError, SDKCompatibilityError
 
+PRODUCER_STATUSES = frozenset({"active", "planned"})
+
 
 @dataclass(frozen=True)
 class ProducerContract:
@@ -24,11 +26,28 @@ class CompatibilityRegistry:
         unknown_producer_behavior: str,
         unknown_contract_behavior: str,
         incompatible_sdk_behavior: str,
+        planned: dict[str, str] | None = None,
     ) -> None:
         self._producers = producers
+        self._planned = dict(planned or {})
         self.unknown_producer_behavior = unknown_producer_behavior
         self.unknown_contract_behavior = unknown_contract_behavior
         self.incompatible_sdk_behavior = incompatible_sdk_behavior
+
+    @property
+    def active_producer_ids(self) -> frozenset[str]:
+        """Producers that are production-compatible corpus inputs."""
+        return frozenset(self._producers)
+
+    @property
+    def planned_producer_ids(self) -> frozenset[str]:
+        """Declared producers that do not emit their contract yet.
+
+        These are architecture intent, not wiring. They are kept in the
+        registry so the intended integration stays reviewable, and are refused
+        at ingestion so a declaration cannot be mistaken for a live channel.
+        """
+        return frozenset(self._planned)
 
     @classmethod
     def load(cls, path: Path) -> CompatibilityRegistry:
@@ -43,10 +62,19 @@ class CompatibilityRegistry:
                 "producer registry must contain a producers object"
             )
         producers: dict[str, ProducerContract] = {}
+        planned: dict[str, str] = {}
         for producer_id, value in raw_producers.items():
             if not isinstance(value, dict):
                 raise ProducerCompatibilityError(
                     f"producer {producer_id!r} must be an object"
+                )
+            # A registry that predates the status contract declares no status;
+            # treat that as active so externally supplied registries keep
+            # loading unchanged.
+            status = value.get("status", "active")
+            if status not in PRODUCER_STATUSES:
+                raise ProducerCompatibilityError(
+                    f"producer {producer_id!r} has invalid status {status!r}"
                 )
             event_classes = value.get("event_classes")
             contract_versions = value.get("contract_versions")
@@ -67,6 +95,14 @@ class CompatibilityRegistry:
                 raise ProducerCompatibilityError(
                     f"producer {producer_id!r} has no SDK contract"
                 )
+            if status == "planned":
+                reason = value.get("planned_reason")
+                planned[producer_id] = (
+                    reason
+                    if isinstance(reason, str) and reason
+                    else "producer is declared but does not emit this contract"
+                )
+                continue
             producers[producer_id] = ProducerContract(
                 producer_id=producer_id,
                 event_classes=frozenset(event_classes),
@@ -75,6 +111,7 @@ class CompatibilityRegistry:
             )
         return cls(
             producers,
+            planned=planned,
             unknown_producer_behavior=str(
                 document.get("unknown_producer_behavior", "quarantine")
             ),
@@ -96,6 +133,12 @@ class CompatibilityRegistry:
     ) -> ProducerContract:
         producer = self._producers.get(producer_id)
         if producer is None:
+            planned_reason = self._planned.get(producer_id)
+            if planned_reason is not None:
+                raise ProducerCompatibilityError(
+                    f"producer {producer_id} is declared but not active: "
+                    f"{planned_reason}"
+                )
             raise ProducerCompatibilityError(f"unknown producer: {producer_id}")
         if event_class not in producer.event_classes:
             raise ProducerCompatibilityError(

@@ -68,11 +68,11 @@ jobs:
           set -euo pipefail
           storage="$(mktemp -d)"
           l9-intelligence ingest-event \
-            tests/fixtures/producers/valid-core-gate.json \
+            tests/fixtures/producers/valid-sdk-finding-bundle.json \
             --storage-root "${storage}" \
             --output "${storage}/first.json"
           l9-intelligence ingest-event \
-            tests/fixtures/producers/valid-core-gate.json \
+            tests/fixtures/producers/valid-sdk-finding-bundle.json \
             --storage-root "${storage}" \
             --output "${storage}/second.json"
           l9-intelligence verify-store \

@@ -39,9 +39,9 @@ class CompilationLifecycleTests(unittest.TestCase):
             analytics = root / "analytics"
             compilations = root / "compilations"
             event = json.loads(
-                (ROOT / "tests/fixtures/producers/valid-core-gate.json").read_text(
-                    encoding="utf-8"
-                )
+                (
+                    ROOT / "tests/fixtures/producers/valid-sdk-finding-bundle.json"
+                ).read_text(encoding="utf-8")
             )
             service = IngestionService(
                 event_schema=(ROOT / "schemas/intelligence/corpus-event.schema.json"),
