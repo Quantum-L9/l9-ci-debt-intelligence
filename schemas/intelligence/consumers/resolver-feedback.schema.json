@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9://intelligence/consumers/resolver-feedback/v1",
+  "title": "L9 Intelligence consumer view of l9.intelligence-feedback-event/v1",
+  "description": "Intelligence-owned compatibility subset of the Resolver's public feedback contract. Quantum-L9/l9-ci-debt-resolver remains the sole authority for l9.intelligence-feedback-event/v1; this document declares only what Intelligence requires in order to project a feedback event onto l9.corpus-event/v1. It is deliberately not a copy of the producer's authoritative schema: unknown properties are permitted at every level so an additive, backwards-compatible producer extension does not break ingestion, and constraints are asserted only where a value is read or carried into lineage.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "event_id",
+    "idempotency_key",
+    "event_type",
+    "repository_pseudonym",
+    "provider",
+    "resolver_version",
+    "occurred_at",
+    "failure",
+    "resolution",
+    "validation",
+    "correlation",
+    "provenance",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "l9.intelligence-feedback-event/v1"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^feedback_event_[0-9a-f]{64}$"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "pattern": "^feedback_idempotency_[0-9a-f]{64}$"
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "repository_pseudonym": {
+      "type": "string",
+      "pattern": "^repository_[0-9a-f]{64}$"
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "resolver_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["fingerprint", "category", "attempt_number"],
+      "properties": {
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^failure_[0-9a-f]{64}$"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "attempt_number": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["terminal_state"],
+      "properties": {
+        "terminal_state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["result"],
+      "properties": {
+        "result": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "correlation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["finding_ids", "contract_ids", "capability_profile"],
+      "properties": {
+        "finding_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "contract_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "capability_profile": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["classification_id_hash"],
+      "properties": {
+        "classification_id_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    }
+  }
+}
