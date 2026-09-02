@@ -512,7 +512,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 server.serve_forever()
             except KeyboardInterrupt:
-                pass
+                print("feedback ingress shutting down", file=sys.stderr, flush=True)
             finally:
                 server.server_close()
             return 0
