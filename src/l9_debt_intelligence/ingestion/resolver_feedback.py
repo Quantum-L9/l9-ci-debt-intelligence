@@ -15,7 +15,8 @@ re-keyed or summarised, so failure fingerprint and category, resolution
 terminal state, validation outcome, finding and contract identifiers,
 capability profile, hashed provenance and the idempotency key all survive
 intact for downstream learning. `lineage.producer_event_hash` binds the
-projection to the exact bytes the producer emitted.
+projection to the canonical producer document, independent of JSON key order
+or insignificant whitespace.
 """
 
 from __future__ import annotations
