@@ -69,7 +69,7 @@ jobs:
           snapshots="${workspace}/snapshots"
           analytics="${workspace}/analytics"
           l9-intelligence ingest-event \
-            tests/fixtures/producers/valid-core-gate.json \
+            tests/fixtures/producers/valid-sdk-finding-bundle.json \
             --storage-root "${ingestion}"
           l9-intelligence build-snapshot \
             --storage-root "${ingestion}" \

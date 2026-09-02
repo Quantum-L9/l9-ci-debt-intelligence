@@ -1,0 +1,20 @@
+{
+  "schema_version": "l9.corpus-event/v1",
+  "producer_id": "Quantum-L9/l9-ci-sdk",
+  "producer_contract": "l9.finding-bundle/v1",
+  "sdk_contract": "l9.integration-contract/v1",
+  "event_id": "finding-bundle-run-100",
+  "event_class": "static_finding",
+  "event_time": "2026-07-17T12:00:00Z",
+  "snapshot_or_run_id": "run-100",
+  "redaction_status": "producer_redacted",
+  "limitations": [],
+  "unknowns": [],
+  "lineage": {
+    "producer_event_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "parent_event_ids": []
+  },
+  "payload": {
+    "artifact_reference": "artifact://run-100"
+  }
+}
