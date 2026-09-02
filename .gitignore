@@ -8,11 +8,3 @@ dist/
 build/
 *.egg-info/
 var/
-
-# Machine-local agent scaffolding and run receipts, not deliverables. `.l9/`
-# tracks contracts, but `.l9/pr/` and `.l9/autonomy/` are per-run output from
-# the publish ladder, and `.claude/` is session bootstrap. All three embed
-# absolute paths for the host that produced them, so they are never portable.
-.claude/
-.l9/pr/
-.l9/autonomy/
