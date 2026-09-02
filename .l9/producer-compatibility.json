@@ -16,14 +16,9 @@
       "required_sdk_contract": "l9.integration-contract/v1"
     },
     "Quantum-L9/l9-ci-debt-resolver": {
-      "status": "planned",
-      "planned_reason": "l9-ci-debt-resolver does not emit l9.resolver-corpus-event/v1; the token appears only in this repository's own contracts and docs.",
-      "event_classes": [
-        "CI_failure_classification",
-        "repair_attempt",
-        "verification_outcome"
-      ],
-      "contract_versions": ["l9.resolver-corpus-event/v1"],
+      "status": "active",
+      "event_classes": ["verification_outcome"],
+      "contract_versions": ["l9.intelligence-feedback-event/v1"],
       "required_sdk_contract": "l9.integration-contract/v1"
     },
     "Quantum-L9/PR_Repair": {

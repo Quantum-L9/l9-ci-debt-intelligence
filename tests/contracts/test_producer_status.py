@@ -7,10 +7,19 @@ heard of them. A machine-readable registry that lists a producer as a
 production-compatible input, when nothing emits that contract, is a claim about
 wiring that does not exist.
 
-The registry keeps those four entries, because they are reviewable architecture
-intent worth preserving, but marks them `planned` and refuses them at
-ingestion. These tests hold that line: exactly one producer is active in v0.1,
-and a planned producer cannot be ingested by declaring itself.
+One of those four was a mis-declaration rather than a gap.
+`l9-ci-debt-resolver` emits nothing called `l9.resolver-corpus-event/v1`, but it
+does emit `l9.intelligence-feedback-event/v1` -- with deterministic identity, a
+durable outbox, and a transport already pointed at this repository. The registry
+now names the contract that exists, and `ResolverFeedbackAdapter` projects it
+onto the corpus envelope, so the resolver is active on the strength of shipped
+code rather than intent.
+
+The remaining three entries stay in the registry, because they are reviewable
+architecture intent worth preserving, but are marked `planned` and refused at
+ingestion. These tests hold that line: only producers that actually emit their
+declared contract are active, and a planned producer cannot be ingested by
+declaring itself.
 """
 
 from __future__ import annotations
@@ -26,16 +35,25 @@ from l9_debt_intelligence.contracts.validator import EventValidator
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = ROOT / ".l9/producer-compatibility.json"
 
-# The only contract any repository in the constellation actually emits.
-ACTIVE_PRODUCER = "Quantum-L9/l9-ci-sdk"
-ACTIVE_CONTRACT = "l9.finding-bundle/v1"
+# Contracts a repository in the constellation actually emits today.
+SDK_PRODUCER = "Quantum-L9/l9-ci-sdk"
+SDK_CONTRACT = "l9.finding-bundle/v1"
+RESOLVER_PRODUCER = "Quantum-L9/l9-ci-debt-resolver"
+RESOLVER_CONTRACT = "l9.intelligence-feedback-event/v1"
+
+ACTIVE = {
+    SDK_PRODUCER: (SDK_CONTRACT, "static_finding"),
+    RESOLVER_PRODUCER: (RESOLVER_CONTRACT, "verification_outcome"),
+}
 
 PLANNED = {
     "Quantum-L9/l9-ci-core": "l9.core-gate-event/v1",
-    "Quantum-L9/l9-ci-debt-resolver": "l9.resolver-corpus-event/v1",
     "Quantum-L9/PR_Repair": "l9.repair-learning-packet/v1",
     "Quantum-L9/l9-ci-debt-lsp": "l9.editor-outcome-event/v1",
 }
+
+# The contract the registry once attributed to the resolver. Nothing emits it.
+RETIRED_PHANTOM_CONTRACT = "l9.resolver-corpus-event/v1"
 
 
 class ProducerStatusTests(unittest.TestCase):
@@ -43,8 +61,15 @@ class ProducerStatusTests(unittest.TestCase):
         self.registry = CompatibilityRegistry.load(REGISTRY)
         self.document = json.loads(REGISTRY.read_text(encoding="utf-8"))
 
-    def test_exactly_one_producer_is_active(self) -> None:
-        self.assertEqual({ACTIVE_PRODUCER}, set(self.registry.active_producer_ids))
+    def test_only_shipped_producers_are_active(self) -> None:
+        self.assertEqual(set(ACTIVE), set(self.registry.active_producer_ids))
+
+    def test_the_phantom_resolver_contract_is_gone(self) -> None:
+        """The registry may not name a token no repository emits."""
+        self.assertNotIn(
+            RETIRED_PHANTOM_CONTRACT,
+            REGISTRY.read_text(encoding="utf-8"),
+        )
 
     def test_every_phantom_producer_is_marked_planned(self) -> None:
         self.assertEqual(set(PLANNED), set(self.registry.planned_producer_ids))
@@ -62,14 +87,25 @@ class ProducerStatusTests(unittest.TestCase):
             with self.subTest(producer=producer_id):
                 self.assertTrue(value.get("planned_reason"))
 
-    def test_the_sdk_finding_bundle_input_is_still_accepted(self) -> None:
-        contract = self.registry.validate(
-            producer_id=ACTIVE_PRODUCER,
-            event_class="static_finding",
-            producer_contract=ACTIVE_CONTRACT,
-            sdk_contract="l9.integration-contract/v1",
-        )
-        self.assertEqual(ACTIVE_PRODUCER, contract.producer_id)
+    def test_every_active_producer_input_is_accepted(self) -> None:
+        for producer_id, (contract_version, event_class) in ACTIVE.items():
+            with self.subTest(producer=producer_id):
+                contract = self.registry.validate(
+                    producer_id=producer_id,
+                    event_class=event_class,
+                    producer_contract=contract_version,
+                    sdk_contract="l9.integration-contract/v1",
+                )
+                self.assertEqual(producer_id, contract.producer_id)
+
+    def test_the_resolver_may_not_emit_its_retired_contract(self) -> None:
+        with self.assertRaises(ProducerCompatibilityError):
+            self.registry.validate(
+                producer_id=RESOLVER_PRODUCER,
+                event_class="verification_outcome",
+                producer_contract=RETIRED_PHANTOM_CONTRACT,
+                sdk_contract="l9.integration-contract/v1",
+            )
 
     def test_planned_producers_are_refused_by_the_registry(self) -> None:
         for producer_id, contract_version in PLANNED.items():
@@ -104,7 +140,7 @@ class ProducerStatusTests(unittest.TestCase):
 
     def test_an_unknown_status_is_rejected_rather_than_assumed_active(self) -> None:
         document = json.loads(REGISTRY.read_text(encoding="utf-8"))
-        document["producers"][ACTIVE_PRODUCER]["status"] = "probably-fine"
+        document["producers"][SDK_PRODUCER]["status"] = "probably-fine"
         path = ROOT / "tests" / "fixtures" / "producers" / ".tmp-invalid-status.json"
         path.write_text(json.dumps(document), encoding="utf-8")
         try:
