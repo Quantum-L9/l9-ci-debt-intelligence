@@ -1,2 +1,2 @@
 duckdb>=1.5.5,<2
-pyarrow>=17,<20
+pyarrow>=25.0.1,<26
