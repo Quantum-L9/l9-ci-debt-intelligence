@@ -3,7 +3,7 @@
   "sdk": {
     "contract": "l9.integration-contract/v1",
     "minimum_version": "0.1.0",
-    "maximum_version_exclusive": "2.0.0"
+    "maximum_version_exclusive": "3.0.0"
   },
   "core": {
     "minimum_contract": "l9.core-defense-consumer/v1"
