@@ -7,9 +7,15 @@ from typing import Any
 
 from .errors import PublicationGateError
 
+# NOTE: the separator is a single escaped dot. In a raw string ``\\.`` is two
+# characters -- backslash, backslash -- which compiles to a regex matching a
+# LITERAL BACKSLASH followed by any character. That is what this pattern used to
+# say, so parse_version() rejected every ordinary semantic version and accepted
+# only nonsense like ``1\.0\.0``. Assembling a defense pack was impossible: both
+# assemble_pack() and load_compatibility() call parse_version on their way in.
 VERSION = re.compile(
-    r"^(?P<major>0|[1-9][0-9]*)\\."
-    r"(?P<minor>0|[1-9][0-9]*)\\."
+    r"^(?P<major>0|[1-9][0-9]*)\."
+    r"(?P<minor>0|[1-9][0-9]*)\."
     r"(?P<patch>0|[1-9][0-9]*)"
     r"(?:-[A-Za-z0-9.-]+)?$"
 )
