@@ -1,3 +1,4 @@
+---
 # Quantum-L9 org starter — org nightly (ci_deep analyze-semgrep + full-tree tests).
 # Thin trigger only. Calls the l9-ci-core nightly kernel; do not add scan logic here.
 name: "L9 Nightly"
