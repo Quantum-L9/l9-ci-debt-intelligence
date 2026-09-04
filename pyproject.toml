@@ -13,7 +13,7 @@ dependencies = [
   "PyYAML>=6.0,<7",
   "duckdb>=1.1,<2",
   "pyarrow>=17,<20",
-  "cryptography>=43,<46",
+  "cryptography>=43,<51",
 ]
 
 [project.optional-dependencies]
