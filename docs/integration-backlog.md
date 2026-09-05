@@ -141,7 +141,7 @@ repositories and must not be treated as production-compatible inputs.
 | Producer | Contract | Why it is not active |
 |---|---|---|
 | `Quantum-L9/l9-ci-core` | `l9.core-gate-event/v1` | `l9-ci-core` does not emit the contract. It orchestrates `l9-ci-sdk` and routes artifacts to CI storage; it has no corpus emitter. |
-| `Quantum-L9/PR_Repair` | `l9.repair-learning-packet/v1` | `PR_Repair` does not emit the contract, and in v0.1 it is a standalone PR assistant outside the debt pipeline entirely. |
+| `Quantum-L9/l9-pr-repair` | `l9.repair-learning-packet/v1` | `l9-pr-repair` does not emit the contract, and in v0.1 it is a standalone PR assistant outside the debt pipeline entirely. |
 | `Quantum-L9/l9-ci-debt-lsp` | `l9.editor-outcome-event/v1` | The LSP does not emit the contract. Its real seam is consuming defense packs, not producing corpus events. |
 
 ## Closing an entry

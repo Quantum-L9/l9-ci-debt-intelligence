@@ -45,7 +45,7 @@ dependency_direction:
   event_inputs:
     - l9-ci-core -> l9-ci-debt-intelligence
     - l9-ci-debt-resolver -> l9-ci-debt-intelligence
-    - PR_Repair -> l9-ci-debt-intelligence
+    - l9-pr-repair -> l9-ci-debt-intelligence
     - l9-ci-debt-lsp -> l9-ci-debt-intelligence
   prohibited:
     - l9-ci-debt-intelligence -> producer runtime internals
@@ -205,7 +205,7 @@ cat > .l9/producer-compatibility.json <<'EOF'
       "contract_versions": ["l9.resolver-corpus-event/v1"],
       "required_sdk_contract": "l9.integration-contract/v1"
     },
-    "Quantum-L9/PR_Repair": {
+    "Quantum-L9/l9-pr-repair": {
       "event_classes": [
         "repair_attempt",
         "verification_outcome"
