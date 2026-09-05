@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9://intelligence/consumers/sdk-finding-bundle/v1",
+  "title": "L9 Intelligence consumer view of l9.finding-bundle/v1",
+  "description": "Intelligence-owned compatibility subset of the SDK's public finding-bundle contract. Quantum-L9/l9-ci-sdk remains the sole authority for l9.finding-bundle/v1; this document declares only what Intelligence requires in order to redact a bundle and project it onto l9.corpus-event/v1. It is deliberately not a copy of the producer's authoritative schema: unknown properties are permitted at every level so an additive, backwards-compatible producer extension does not break ingestion, and constraints are asserted only where a value is read, redacted, or carried into lineage. In particular `snapshot.revision` is required because a bundle with no exact revision cannot be bound to a subject, and every `normalized_path` is required to be a string because the adapter must be able to replace it.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema", "SDK_version", "generated_at", "snapshot", "findings", "evidence", "summary"],
+  "properties": {
+    "schema": { "const": "l9.finding-bundle/v1" },
+    "SDK_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["snapshot_id", "revision"],
+      "properties": {
+        "snapshot_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "revision": { "type": "string", "minLength": 7, "maxLength": 128 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["normalized_path"],
+              "properties": { "normalized_path": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["normalized_path"],
+              "properties": { "normalized_path": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "summary": { "type": "object", "additionalProperties": true }
+  }
+}

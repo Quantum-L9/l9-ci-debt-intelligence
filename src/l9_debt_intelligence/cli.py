@@ -25,6 +25,7 @@ from .ingestion.http_ingress import (
     build_server,
 )
 from .ingestion.resolver_feedback import ResolverFeedbackAdapter
+from .ingestion.sdk_finding_bundle import SdkFindingBundleAdapter
 from .ingestion.service import IngestionService
 from .ingestion.verify import verify_store
 from .publication.assembler import assemble_pack
@@ -40,6 +41,32 @@ from .snapshots.verify import verify_snapshot
 
 def repository_root() -> Path:
     return Path(__file__).resolve().parents[2]
+
+
+def _required_key(variable: str) -> bytes:
+    """Read one pseudonymisation key from the environment, or fail closed.
+
+    Environment rather than a flag: a key on the command line lands in shell
+    history and in every process listing on the host.
+
+    The 32-byte floor is enforced here as well as in `_keyed_digest`, so a
+    short key is rejected before a bundle is read rather than after. There is
+    no default and no generated fallback: a missing key must stop ingestion,
+    because silently ingesting under a fresh random key would produce a corpus
+    whose pseudonyms join to nothing and look fine.
+    """
+    raw = os.environ.get(variable, "")
+    if not raw:
+        raise ValueError(
+            f"{variable} must be set to ingest an SDK finding bundle; it keys "
+            "the repository pseudonym and path tokens, and must be the same "
+            "key used for every other producer or the corpus partitions by "
+            "producer"
+        )
+    key = raw.encode("utf-8")
+    if len(key) < 32:
+        raise ValueError(f"{variable} must be at least 32 bytes")
+    return key
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -82,6 +109,47 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     ingest.add_argument("--output", type=Path)
+    sdk_bundle = commands.add_parser(
+        "ingest-sdk-finding-bundle",
+        help=(
+            "Redact one native l9.finding-bundle/v1 document, project it onto "
+            "the corpus envelope and ingest it."
+        ),
+    )
+    sdk_bundle.add_argument("bundle", type=Path)
+    sdk_bundle.add_argument(
+        "--repository",
+        required=True,
+        help=(
+            "owner/name of the scanned repository. A finding bundle does not "
+            "name it -- snapshot.repository_root is a local path -- and it is "
+            "pseudonymised, never stored."
+        ),
+    )
+    sdk_bundle.add_argument(
+        "--consumer-schema",
+        type=Path,
+        default=(
+            repository_root()
+            / "schemas/intelligence/consumers/sdk-finding-bundle.schema.json"
+        ),
+    )
+    sdk_bundle.add_argument(
+        "--schema",
+        type=Path,
+        default=repository_root() / "schemas/intelligence/corpus-event.schema.json",
+    )
+    sdk_bundle.add_argument(
+        "--registry",
+        type=Path,
+        default=repository_root() / ".l9/producer-compatibility.json",
+    )
+    sdk_bundle.add_argument(
+        "--storage-root",
+        type=Path,
+        required=True,
+    )
+    sdk_bundle.add_argument("--output", type=Path)
     resolver_feedback = commands.add_parser(
         "ingest-resolver-feedback",
         help=(
@@ -465,6 +533,33 @@ def main(argv: Sequence[str] | None = None) -> int:
                 storage_root=arguments.storage_root,
             )
             ingestion_result = service.ingest(adapter.project(native))
+            document = ingestion_result.as_dict()
+            exit_code = 0 if ingestion_result.status in {"accepted", "duplicate"} else 3
+        elif arguments.command == "ingest-sdk-finding-bundle":
+            native = json.loads(arguments.bundle.read_text(encoding="utf-8"))
+            if not isinstance(native, dict):
+                raise ValueError("sdk finding bundle must be a JSON object")
+            # Never flags: keys on the command line land in shell history and in
+            # every process listing on the host, and these two keys are what
+            # stand between the corpus and the source tree it describes.
+            pseudonym_key = _required_key("L9_INTELLIGENCE_PSEUDONYM_KEY")
+            path_key = _required_key("L9_INTELLIGENCE_PATH_KEY")
+            sdk_adapter = SdkFindingBundleAdapter(
+                consumer_schema=arguments.consumer_schema,
+            )
+            service = IngestionService(
+                event_schema=arguments.schema,
+                compatibility_registry=arguments.registry,
+                storage_root=arguments.storage_root,
+            )
+            ingestion_result = service.ingest(
+                sdk_adapter.project(
+                    native,
+                    repository=arguments.repository,
+                    pseudonym_key=pseudonym_key,
+                    path_key=path_key,
+                )
+            )
             document = ingestion_result.as_dict()
             exit_code = 0 if ingestion_result.status in {"accepted", "duplicate"} else 3
         elif arguments.command == "serve-feedback-ingress":
