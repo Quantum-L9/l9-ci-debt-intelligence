@@ -54,7 +54,16 @@ def verify_snapshot(snapshot_path: Path) -> dict[str, Any]:
             raise SnapshotVerificationError(f"partition hash mismatch: {relative_path}")
         table = pq.ParquetFile(path).read()
         row_count = table.num_rows
-        if row_count != partition.get("record_count"):
+        # A partition holds one row per learning observation, so its row count
+        # is `observation_count`. `record_count` still means corpus records.
+        # Snapshots written before the learning projection carry no
+        # `observation_count` and had exactly one row per record, so falling
+        # back to `record_count` keeps them verifiable rather than retroactively
+        # invalid.
+        expected_rows = partition.get("observation_count")
+        if expected_rows is None:
+            expected_rows = partition.get("record_count")
+        if row_count != expected_rows:
             raise SnapshotVerificationError(
                 f"partition row count mismatch: {relative_path}"
             )
@@ -64,9 +73,12 @@ def verify_snapshot(snapshot_path: Path) -> dict[str, Any]:
                 f"partition row order is not deterministic: {relative_path}"
             )
         total_rows += row_count
-    if total_rows != manifest.get("record_count"):
+    expected_total = manifest.get("observation_count")
+    if expected_total is None:
+        expected_total = manifest.get("record_count")
+    if total_rows != expected_total:
         raise SnapshotVerificationError(
-            "manifest record count does not match partitions"
+            "manifest observation count does not match partitions"
         )
     deterministic_document = {
         "snapshot_id": manifest["snapshot_id"],
@@ -78,6 +90,10 @@ def verify_snapshot(snapshot_path: Path) -> dict[str, Any]:
         "partitions": manifest["partitions"],
         "limitations": manifest["limitations"],
     }
+    # Included only when present, so the hash of a pre-projection manifest is
+    # still reproduced exactly as it was written.
+    if "observation_count" in manifest:
+        deterministic_document["observation_count"] = manifest["observation_count"]
     actual_output_hash = sha256_bytes(canonical_json(deterministic_document))
     if actual_output_hash != manifest.get("deterministic_output_hash"):
         raise SnapshotVerificationError("deterministic output hash mismatch")
@@ -85,7 +101,8 @@ def verify_snapshot(snapshot_path: Path) -> dict[str, Any]:
         "schema_version": "l9.snapshot-verification/v1",
         "status": "valid",
         "snapshot_id": manifest["snapshot_id"],
-        "record_count": total_rows,
+        "record_count": manifest["record_count"],
+        "observation_count": total_rows,
         "partition_count": len(partitions),
         "verified_partition_count": len(partitions),
         "deterministic_output_hash": actual_output_hash,

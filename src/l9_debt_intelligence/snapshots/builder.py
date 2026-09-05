@@ -21,7 +21,7 @@ from .hashing import (
     sha256_file,
 )
 from .models import SnapshotBuildResult
-from .parquet import write_partition
+from .parquet import partition_row_count, write_partition
 from .planner import plan_partitions
 from .source import load_verified_records
 
@@ -59,6 +59,14 @@ def build_snapshot(
         {
             "record_id": record.record_id,
             "source_record_hash": record.source_record_hash,
+            # The learning observations are part of what the snapshot contains,
+            # so they belong in its identity. Without this a re-derivation under
+            # a changed projector would keep the same snapshot id while writing
+            # different parquet, and the collision check would report an
+            # identity collision for what is really a new snapshot.
+            "observation_set_hash": sha256_bytes(
+                canonical_json([dict(row) for row in record.observations])
+            ),
         }
         for record in records
     ]
@@ -92,15 +100,24 @@ def build_snapshot(
     )
     try:
         partition_entries: list[dict[str, object]] = []
+        observation_total = 0
         for plan in plans:
             partition_path = temporary / plan.relative_path
             write_partition(partition_path, plan)
+            partition_rows = partition_row_count(plan)
+            observation_total += partition_rows
             partition_entries.append(
                 {
                     "event_class": plan.event_class,
                     "producer_id": plan.producer_id,
                     "relative_path": plan.relative_path.as_posix(),
                     "record_count": len(plan.records),
+                    # Parquet rows, which is one per learning observation and no
+                    # longer one per record. Recorded separately so
+                    # `record_count` keeps meaning corpus records; conflating
+                    # the two would make the manifest lie about the corpus the
+                    # moment a record described more than one observation.
+                    "observation_count": partition_rows,
                     "sha256": sha256_file(partition_path),
                 }
             )
@@ -109,6 +126,7 @@ def build_snapshot(
             "format_version": FORMAT_VERSION,
             "sdk_contract_version": SDK_CONTRACT_VERSION,
             "record_count": len(records),
+            "observation_count": observation_total,
             "partition_count": len(partition_entries),
             "source_record_set_hash": source_record_set_hash,
             "partitions": partition_entries,

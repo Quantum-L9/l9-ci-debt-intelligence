@@ -71,19 +71,92 @@ class SdkFindingBundleSeam(unittest.TestCase):
             native["snapshot"]["revision"],
             "31003e1dffbb14eab98043ff5a9e1d43832b7a9d",
         )
+        # And repeats the snapshot id on every record, which is why redacting
+        # `snapshot.snapshot_id` alone would leave it in clear 18 times over.
+        self.assertTrue(
+            all(finding["snapshot_id"] for finding in native["findings"]),
+        )
+        self.assertTrue(
+            all(item["snapshot_id"] for item in native["evidence"]),
+        )
 
-    def test_intelligence_redaction_does_not_catch_the_native_bundle(self) -> None:
+    def test_intelligence_redaction_still_misses_relative_source_paths(self) -> None:
         """Why the adapter redacts instead of trusting the ingestion check.
 
-        `assess_redaction` looks for sensitive keys, credential patterns and
-        ABSOLUTE paths. A finding bundle carries repository-RELATIVE paths, so
-        it passes the check while naming every file it scanned. Carrying it
-        whole would have lowered the corpus privacy bar with nothing firing.
+        `assess_redaction` looks for sensitive keys, credential patterns,
+        ABSOLUTE paths and -- since L3-F7 -- bare git object ids. A finding
+        bundle carries repository-RELATIVE paths, which none of those match, so
+        the filenames still pass the check unexamined. That is the standing
+        reason this adapter redacts rather than carrying the bundle whole.
+
+        The git-object-id rule does now fire on this fixture, via
+        `snapshot.revision`. So the check is no longer blind to everything --
+        it is blind to the paths, which is the narrower and still-true claim.
         """
         assessment = assess_redaction(
             {"redaction_status": "producer_redacted", "payload": _native()}
         )
-        self.assertTrue(assessment.safe)
+        self.assertFalse(assessment.safe)
+        self.assertTrue(
+            any(item.startswith("git-object-id:") for item in assessment.limitations),
+            assessment.limitations,
+        )
+        # The paths are what still gets through: no finding names one.
+        self.assertFalse(
+            any("serializer" in item for item in assessment.limitations),
+            assessment.limitations,
+        )
+
+    def test_a_core_wired_snapshot_id_is_a_commit_sha_and_is_redacted(self) -> None:
+        """L3-F7 regression: the snapshot id must not carry the revision.
+
+        `l9-ci-core/.github/workflows/analyze-semgrep.yml` invokes the SDK with
+        `snapshot-id: ${{ github.sha }}`, so in the constellation's own
+        production wiring the snapshot id *is* the commit SHA -- and it is
+        repeated on every finding and every evidence record.
+
+        The committed native fixture cannot show this: it came from a run whose
+        snapshot id was SDK-derived (`snapshot_<sha256>`), so the raw revision
+        appeared only under `snapshot.revision`, which was already hashed. That
+        is why the leak survived a suite that otherwise checks the envelope for
+        identifying values. This test models Core's actual invocation instead.
+        """
+        native = _native()
+        revision = native["snapshot"]["revision"]
+        native["snapshot"]["snapshot_id"] = revision
+        for collection in ("findings", "evidence"):
+            for item in native[collection]:
+                item["snapshot_id"] = revision
+
+        envelope = SdkFindingBundleAdapter().project(
+            native,
+            repository=REPOSITORY,
+            pseudonym_key=PSEUDONYM_KEY,
+            path_key=PATH_KEY,
+        )
+        serialized = json.dumps(envelope)
+        self.assertNotIn(revision, serialized)
+        # Including the envelope's own correlation key, which leaves the
+        # adapter and is what a subscriber to the HTTP ingress would see.
+        self.assertNotEqual(envelope["snapshot_or_run_id"], revision)
+        self.assertEqual(envelope["snapshot_or_run_id"], sha256_document(revision))
+
+        bundle = envelope["payload"]["bundle"]
+        self.assertEqual(bundle["snapshot"]["snapshot_id"], sha256_document(revision))
+        for collection in ("findings", "evidence"):
+            for item in bundle[collection]:
+                self.assertEqual(item["snapshot_id"], sha256_document(revision))
+
+    def test_the_redacted_envelope_passes_the_ingestion_check(self) -> None:
+        """The new git-object-id rule must not fire on our own redaction.
+
+        Every digest this adapter writes is sha256 (64 hex) and every token
+        carries a `repository_`/`path_` prefix, so a rule bounded to a bare
+        40-character object id cannot match them. If it could, every SDK event
+        would self-quarantine.
+        """
+        assessment = assess_redaction(_project())
+        self.assertTrue(assessment.safe, assessment.limitations)
 
     def test_projection_replaces_every_source_path(self) -> None:
         envelope = _project()

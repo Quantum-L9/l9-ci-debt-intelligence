@@ -72,6 +72,21 @@ class SdkFindingBundleError(ContractError):
     """The document does not satisfy Intelligence's consumer view."""
 
 
+def _hash_in_place(container: dict[str, Any], key: str) -> None:
+    """Replace ``container[key]`` with its digest, if it is a string.
+
+    Unkeyed, matching the construction this adapter has always used for
+    ``snapshot.revision``: two records can still be known to describe the same
+    tree, and the value cannot be used to fetch it. It is a one-way map, not a
+    secret -- someone holding a candidate SHA can hash it and confirm a match
+    -- so it removes the searchable identifier without pretending to defeat a
+    targeted guess.
+    """
+    value = container.get(key)
+    if isinstance(value, str):
+        container[key] = sha256_document(value)
+
+
 class SdkFindingBundleAdapter:
     """Validate an SDK finding bundle, redact it, and project the envelope.
 
@@ -128,15 +143,26 @@ class SdkFindingBundleAdapter:
                             repository_path=original,
                             path_key=path_key,
                         )
+                # Every finding and every evidence record repeats the snapshot
+                # id, so redacting only `snapshot.snapshot_id` would leave the
+                # same value in clear once per record.
+                _hash_in_place(item, "snapshot_id")
 
         snapshot = redacted.get("snapshot")
         if isinstance(snapshot, dict):
             # The revision is replaced rather than dropped: downstream needs to
             # know whether two records describe the same tree, and must not be
             # able to check out that tree.
-            revision = snapshot.get("revision")
-            if isinstance(revision, str):
-                snapshot["revision"] = sha256_document(revision)
+            _hash_in_place(snapshot, "revision")
+            # The snapshot id gets the same treatment, and for a sharper
+            # reason. Hashing `revision` alone did not redact the revision:
+            # l9-ci-core invokes the SDK with `--snapshot-id ${{ github.sha }}`,
+            # so in the constellation's own production wiring the snapshot id
+            # *is* the commit SHA. The revision was hashed under one field name
+            # and carried in clear under another, and a commit SHA is globally
+            # searchable -- which makes the repository pseudonym beside it
+            # decorative.
+            _hash_in_place(snapshot, "snapshot_id")
             # repository_root is a local filesystem path in the producer's
             # environment. It carries no cross-record meaning at all, so it is
             # dropped rather than tokenised.
@@ -164,8 +190,11 @@ class SdkFindingBundleAdapter:
         native = dict(document)
         redacted = self.redact(native, path_key=path_key)
 
-        snapshot = native.get("snapshot", {})
-        snapshot_id = str(snapshot.get("snapshot_id", ""))
+        # Taken from the redacted copy, never from `native`: this value is the
+        # envelope's own correlation key and leaves the adapter, so it must be
+        # the hashed snapshot id rather than the producer's raw one.
+        redacted_snapshot = redacted.get("snapshot", {})
+        snapshot_id = str(redacted_snapshot.get("snapshot_id", ""))
 
         # Binds the projection to the canonical *producer* document, so a record
         # can be traced to the exact bundle it came from without the corpus

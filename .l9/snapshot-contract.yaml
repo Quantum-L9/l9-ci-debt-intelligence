@@ -48,12 +48,28 @@ manifest:
     - format_version
     - SDK_contract_version
     - record_count
+    - observation_count
     - partition_count
     - ordered_partition_hashes
     - source_record_set_hash
     - deterministic_output_hash
     - build_metadata
     - limitations
+  counts:
+    # record_count is corpus records. observation_count is Parquet rows, which
+    # is one per learning observation a record contributes: a single delivery
+    # can describe many independent things, and collapsing them into one row is
+    # what made the corpus unlearnable. The two are recorded separately so the
+    # manifest never has to conflate them.
+    record_count: corpus records admitted into this snapshot
+    observation_count: Parquet rows across all partitions
+  learning_columns:
+    # Carried, not interpreted. The column contract is owned by
+    # contracts/learning_columns.py, which belongs to neither phase, so this
+    # phase can write the values without encoding what they mean -- the
+    # exclusions below are unchanged.
+    owner: contracts/learning_columns.py
+    role: opaque pass-through to phase 3
   build_metadata:
     informational_only:
       - created_at

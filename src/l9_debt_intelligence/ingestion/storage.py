@@ -20,12 +20,14 @@ class FilesystemCorpusStore:
         self.ledger_path = self.root / "ledger/events.jsonl"
         self.records_path = self.root / "records"
         self.quarantine_path = self.root / "quarantine"
+        self.observations_path = self.root / "observations"
         self.index_path = self.root / "indexes/record-ids.txt"
 
     def initialize(self) -> None:
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
         self.records_path.mkdir(parents=True, exist_ok=True)
         self.quarantine_path.mkdir(parents=True, exist_ok=True)
+        self.observations_path.mkdir(parents=True, exist_ok=True)
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
         self.ledger_path.touch(exist_ok=True)
         self.index_path.touch(exist_ok=True)
@@ -65,6 +67,40 @@ class FilesystemCorpusStore:
                 ("\n".join(sorted(existing)) + "\n").encode("utf-8"),
             )
 
+    def read_observations(self, record_id: str) -> list[dict[str, Any]] | None:
+        path = self.observations_path / f"{record_id}.json"
+        if not path.is_file():
+            return None
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, list):
+            raise StorageError(f"invalid stored observations: {path}")
+        observations: list[dict[str, Any]] = []
+        for item in value:
+            if not isinstance(item, dict):
+                raise StorageError(f"invalid stored observation: {path}")
+            observations.append(item)
+        return observations
+
+    def write_observations(
+        self,
+        record_id: str,
+        observations: list[dict[str, Any]],
+    ) -> None:
+        """Store the learning observations derived from one record's event.
+
+        Written through the same write-once path as the record itself, so a
+        replayed delivery either matches byte for byte or raises. Learning
+        observations are derived, not received, but they are derived from an
+        immutable record and must not drift from it.
+
+        Keyed by record id rather than given ids of their own: the observation
+        is a view of that record, and the snapshot joins them on it.
+        """
+        self._write_once(
+            self.observations_path / f"{record_id}.json",
+            observations,
+        )
+
     def write_quarantine(self, record: dict[str, Any]) -> None:
         quarantine_id = record.get("quarantine_id")
         if not isinstance(quarantine_id, str):
@@ -91,7 +127,7 @@ class FilesystemCorpusStore:
     def _write_once(
         self,
         destination: Path,
-        document: dict[str, Any],
+        document: Any,
     ) -> None:
         encoded = canonical_json(document) + b"\n"
         if destination.exists():
