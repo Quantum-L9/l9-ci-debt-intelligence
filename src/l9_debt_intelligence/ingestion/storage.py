@@ -21,6 +21,7 @@ class FilesystemCorpusStore:
         self.records_path = self.root / "records"
         self.quarantine_path = self.root / "quarantine"
         self.observations_path = self.root / "observations"
+        self.corrections_path = self.root / "corrections"
         self.index_path = self.root / "indexes/record-ids.txt"
 
     def initialize(self) -> None:
@@ -28,6 +29,7 @@ class FilesystemCorpusStore:
         self.records_path.mkdir(parents=True, exist_ok=True)
         self.quarantine_path.mkdir(parents=True, exist_ok=True)
         self.observations_path.mkdir(parents=True, exist_ok=True)
+        self.corrections_path.mkdir(parents=True, exist_ok=True)
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
         self.ledger_path.touch(exist_ok=True)
         self.index_path.touch(exist_ok=True)
@@ -100,6 +102,28 @@ class FilesystemCorpusStore:
             self.observations_path / f"{record_id}.json",
             observations,
         )
+
+    def iter_records(self) -> Iterable[dict[str, Any]]:
+        self.initialize()
+        for path in sorted(self.records_path.glob("cr_*.json")):
+            record = self.read_record(path.stem)
+            if record is not None:
+                yield record
+
+    def iter_corrections(self) -> Iterable[dict[str, Any]]:
+        self.initialize()
+        for path in sorted(self.corrections_path.glob("cc_*.json")):
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(value, dict):
+                raise StorageError(f"invalid stored correction: {path}")
+            yield value
+
+    def write_correction(self, document: dict[str, Any]) -> None:
+        correction_id = document.get("correction_id")
+        if not isinstance(correction_id, str):
+            raise StorageError("correction_id is required")
+        destination = self.corrections_path / f"{correction_id}.json"
+        self._write_once(destination, document)
 
     def write_quarantine(self, record: dict[str, Any]) -> None:
         quarantine_id = record.get("quarantine_id")

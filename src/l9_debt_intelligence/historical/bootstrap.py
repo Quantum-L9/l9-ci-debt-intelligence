@@ -102,7 +102,7 @@ def run_bootstrap(
         for event in native_projector.project(episode)
     )
     results = tuple(
-        ingress.ingest(ingress_adapter.project(event.as_dict()))
+        ingress.ingest_or_correct(ingress_adapter.project(event.as_dict()))
         for event in native_events
     )
     return BootstrapResult(

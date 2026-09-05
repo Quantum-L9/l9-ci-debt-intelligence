@@ -39,6 +39,7 @@ storage:
     accepted: var/intelligence/records
     quarantine: var/intelligence/quarantine
     indexes: var/intelligence/indexes
+    corrections: var/intelligence/corrections
   future_target:
     raw_events: versioned-object-storage
     normalized_records: Parquet

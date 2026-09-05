@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,8 @@ from l9_debt_intelligence.ingestion.historical_resolution import (
     HistoricalResolutionAdapter,
 )
 from l9_debt_intelligence.ingestion.service import IngestionService
+from l9_debt_intelligence.ingestion.verify import verify_store
+from l9_debt_intelligence.snapshots.source import load_verified_records
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -121,3 +124,52 @@ def test_sensitive_native_payload_is_quarantined_by_real_p1(
 def test_projection_is_deterministic() -> None:
     native = _native("verification_outcome")
     assert _adapter().project(native) == _adapter().project(deepcopy(native))
+
+
+def test_algorithm_replacement_emits_correction_instead_of_second_active_claim(
+    tmp_path: Path,
+) -> None:
+    adapter = _adapter()
+    service = _service(tmp_path)
+    first_native = _native("verification_outcome")
+    first = service.ingest_or_correct(adapter.project(first_native))
+    replacement_native = deepcopy(first_native)
+    replacement_native["provenance"]["reconstruction_algorithm"] = (
+        "historical-reconstructor/2"
+    )
+    second = service.ingest_or_correct(adapter.project(replacement_native))
+    assert first.status == "accepted"
+    assert second.status == "accepted"
+    assert first.record_id != second.record_id
+    corrections = list((tmp_path / "corrections").glob("cc_*.json"))
+    assert len(corrections) == 1
+    document = json.loads(corrections[0].read_text(encoding="utf-8"))
+    assert document["schema_version"] == "l9.corpus-correction/v1"
+    assert document["target_record_id"] == first.record_id
+    assert document["replacement_event_id"] == first_native["event_id"]
+    assert document["reason"] == (
+        "reconstruction algorithm replacement without contract change"
+    )
+    records = list((tmp_path / "records").glob("cr_*.json"))
+    assert len(records) == 2
+    for path in records:
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        assert stored["superseded_by"] is None
+    assert verify_store(tmp_path)["correction_count"] == 1
+    snapshot = {
+        item.record_id: item.superseded_by for item in load_verified_records(tmp_path)
+    }
+    assert snapshot[first.record_id] == second.record_id
+    assert snapshot[second.record_id] is None
+
+
+def test_identical_redelivery_does_not_write_a_correction(tmp_path: Path) -> None:
+    adapter = _adapter()
+    service = _service(tmp_path)
+    native = _native("repair_attempt")
+    first = service.ingest_or_correct(adapter.project(native))
+    second = service.ingest_or_correct(adapter.project(deepcopy(native)))
+    assert first.status == "accepted"
+    assert second.status == "duplicate"
+    assert first.record_id == second.record_id
+    assert list((tmp_path / "corrections").glob("cc_*.json")) == []

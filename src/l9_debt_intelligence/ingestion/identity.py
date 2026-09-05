@@ -32,6 +32,22 @@ def record_id(
     )
 
 
+def correction_id(
+    *,
+    target_record_id: str,
+    replacement_event_id: str,
+    reason: str,
+) -> str:
+    return namespaced_hash(
+        "cc_",
+        {
+            "reason": reason,
+            "replacement_event_id": replacement_event_id,
+            "target_record_id": target_record_id,
+        },
+    )
+
+
 def quarantine_id(event_hash: str, reason: str) -> str:
     return namespaced_hash(
         "qr_",

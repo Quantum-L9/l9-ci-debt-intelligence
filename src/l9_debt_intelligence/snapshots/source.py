@@ -11,6 +11,7 @@ from l9_debt_intelligence.contracts.learning_columns import (
     coerce_row,
     sort_key,
 )
+from l9_debt_intelligence.ingestion.corrections import derived_superseded_by
 from l9_debt_intelligence.ingestion.verify import verify_store
 
 from .errors import SnapshotSourceError
@@ -51,6 +52,7 @@ def load_verified_records(storage_root: Path) -> tuple[SnapshotRecord, ...]:
         raise SnapshotSourceError("ingestion store verification did not return valid")
     records_root = storage_root / "records"
     rows_root = storage_root / "observations"
+    supersession = derived_superseded_by(storage_root)
     records: list[SnapshotRecord] = []
     for path in sorted(records_root.glob("cr_*.json")):
         document = json.loads(path.read_text(encoding="utf-8"))
@@ -86,9 +88,12 @@ def load_verified_records(storage_root: Path) -> tuple[SnapshotRecord, ...]:
                     separators=(",", ":"),
                 ),
                 superseded_by=(
-                    str(document["superseded_by"])
-                    if document.get("superseded_by")
-                    else None
+                    supersession.get(str(record_id))
+                    or (
+                        str(document["superseded_by"])
+                        if document.get("superseded_by")
+                        else None
+                    )
                 ),
                 source_record_hash=sha256_document(document),
                 observations=_load_rows(rows_root, str(record_id)),
