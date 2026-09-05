@@ -9,7 +9,13 @@ from l9_debt_intelligence.contracts.canonical import sha256_document
 from l9_debt_intelligence.contracts.errors import ContractError
 from l9_debt_intelligence.contracts.validator import EventValidator
 
+from .corrections import (
+    ALGORITHM_REPLACE_REASON,
+    HISTORICAL_PRODUCER_CONTRACT,
+    historical_predecessors,
+)
 from .identity import (
+    correction_id,
     observation_id,
     quarantine_id,
     record_id,
@@ -188,6 +194,72 @@ class IngestionService:
             ledger_sequence=sequence,
             limitations=tuple(normalized.get("limitations", [])) + learning_limitations,
         )
+
+    def ingest_or_correct(self, event: dict[str, Any]) -> IngestionResult:
+        """Admit a corpus event, correcting a replaced historical claim first.
+
+        P1 identity includes the payload hash, so an algorithm-only
+        reconstruction change would otherwise mint a second active record.
+        Historical replacements keep ``event_id`` / run identity and must
+        emit an append-only correction instead of a silent rewrite.
+        """
+        result = self.ingest(event)
+        if result.status != "accepted" or result.record_id is None:
+            return result
+        try:
+            normalized = normalize_event(event)
+        except (NormalizationError, ValueError):
+            return result
+        if normalized.get("producer_contract") != HISTORICAL_PRODUCER_CONTRACT:
+            return result
+        payload_hash = normalized_payload_hash(normalized)
+        predecessors = historical_predecessors(
+            list(self.store.iter_records()),
+            list(self.store.iter_corrections()),
+            event_id=str(normalized["event_id"]),
+            producer_id=str(normalized["producer_id"]),
+            producer_contract=str(normalized["producer_contract"]),
+            event_class=str(normalized["event_class"]),
+            replacement_record_id=result.record_id,
+            payload_hash=payload_hash,
+        )
+        issued_at = format_time(self.clock())
+        for predecessor in predecessors:
+            self.record_correction(
+                target_record_id=str(predecessor["record_id"]),
+                replacement_event_id=str(normalized["event_id"]),
+                reason=ALGORITHM_REPLACE_REASON,
+                issued_at=issued_at,
+                issuer=str(normalized["producer_id"]),
+            )
+        return result
+
+    def record_correction(
+        self,
+        *,
+        target_record_id: str,
+        replacement_event_id: str,
+        reason: str,
+        issued_at: str,
+        issuer: str,
+    ) -> dict[str, Any]:
+        if self.store.read_record(target_record_id) is None:
+            raise ValueError(f"correction target is missing: {target_record_id}")
+        document = {
+            "schema_version": "l9.corpus-correction/v1",
+            "correction_id": correction_id(
+                target_record_id=target_record_id,
+                replacement_event_id=replacement_event_id,
+                reason=reason,
+            ),
+            "target_record_id": target_record_id,
+            "replacement_event_id": replacement_event_id,
+            "reason": reason,
+            "issued_at": issued_at,
+            "issuer": issuer,
+        }
+        self.store.write_correction(document)
+        return document
 
     def _project_learning(
         self,

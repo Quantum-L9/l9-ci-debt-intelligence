@@ -68,6 +68,21 @@ def verify_store(root: Path) -> dict[str, Any]:
                     f"observation does not name its own record: {path}"
                 )
         observation_count += len(observations)
+    correction_count = 0
+    for path in sorted(store.corrections_path.glob("cc_*.json")):
+        document = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(document, dict):
+            raise LedgerVerificationError(f"correction is not an object: {path}")
+        if document.get("correction_id") != path.stem:
+            raise LedgerVerificationError(
+                f"correction identity does not match filename: {path}"
+            )
+        target = document.get("target_record_id")
+        if not isinstance(target, str) or store.read_record(target) is None:
+            raise LedgerVerificationError(
+                f"correction references missing record {target}"
+            )
+        correction_count += 1
     return {
         "schema": "l9.ingestion-verification/v1",
         "status": "valid",
@@ -78,4 +93,5 @@ def verify_store(root: Path) -> dict[str, Any]:
         "record_count": len(list(store.records_path.glob("cr_*.json"))),
         "quarantine_count": len(list(store.quarantine_path.glob("qr_*.json"))),
         "observation_count": observation_count,
+        "correction_count": correction_count,
     }
