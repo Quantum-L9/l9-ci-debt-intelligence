@@ -265,7 +265,7 @@ cat > schemas/intelligence/effectiveness-outcome.schema.json <<'EOF'
         "Quantum-L9/l9-ci-core",
         "Quantum-L9/l9-ci-debt-lsp",
         "Quantum-L9/l9-ci-debt-resolver",
-        "Quantum-L9/PR_Repair"
+        "Quantum-L9/l9-pr-repair"
       ]
     },
     "producer_contract": {

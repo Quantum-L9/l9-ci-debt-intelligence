@@ -33,7 +33,7 @@ ACTIVE = {
 
 PLANNED = {
     "Quantum-L9/l9-ci-core": "l9.core-gate-event/v1",
-    "Quantum-L9/PR_Repair": "l9.repair-learning-packet/v1",
+    "Quantum-L9/l9-pr-repair": "l9.repair-learning-packet/v1",
     "Quantum-L9/l9-ci-debt-lsp": "l9.editor-outcome-event/v1",
 }
 

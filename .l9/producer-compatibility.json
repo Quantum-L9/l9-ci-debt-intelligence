@@ -33,7 +33,7 @@
       "contract_versions": ["l9.intelligence-feedback-event/v1"],
       "required_sdk_contract": "l9.integration-contract/v1"
     },
-    "Quantum-L9/PR_Repair": {
+    "Quantum-L9/l9-pr-repair": {
       "status": "planned",
       "planned_reason": "PR_Repair does not emit l9.repair-learning-packet/v1 and is a standalone PR assistant outside the debt pipeline in v0.1.",
       "event_classes": ["repair_attempt", "verification_outcome"],
