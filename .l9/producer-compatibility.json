@@ -6,7 +6,8 @@
       "status": "active",
       "event_classes": ["static_finding"],
       "contract_versions": ["l9.finding-bundle/v1"],
-      "required_sdk_contract": "l9.integration-contract/v1"
+      "required_sdk_contract": "l9.integration-contract/v1",
+      "ingestion_route": "l9-intelligence ingest-sdk-finding-bundle. Intelligence redacts the bundle (path tokens, repository pseudonym, hashed revision) and projects it onto l9.corpus-event/v1 with redaction_status=intelligence_redacted. The SDK does not emit the corpus envelope; the envelope is Intelligence's to own."
     },
     "Quantum-L9/l9-ci-core": {
       "status": "planned",
