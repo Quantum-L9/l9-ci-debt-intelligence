@@ -31,10 +31,25 @@ def recurrence_rows(
         members = groups[(fingerprint, event_class)]
         scopes = sorted({item.occurrence_scope for item in members})
         producers = {item.producer_id for item in members}
+        # Carried so candidate compilation can join this row against
+        # `effectiveness_rows`, which groups by `canonical_rule_id`. Without it
+        # the only key a candidate could look up was None -- the unattributed
+        # bucket -- so a rule's own repair-success and false-positive evidence
+        # was unreachable and two of the five score components stayed zero for
+        # every rule-attributed candidate, whatever feedback arrived.
+        #
+        # Only emitted when the group agrees. A fingerprint group is normally
+        # one rule (the SDK construction derives the fingerprint from the rule
+        # id), but that is a property of one producer's fingerprinting, not a
+        # guarantee across producers, and joining a disagreeing group to one
+        # rule's effectiveness would attribute another rule's repair history.
+        rule_ids = {item.canonical_rule_id for item in members}
+        canonical_rule_id = rule_ids.pop() if len(rule_ids) == 1 else None
         rows.append(
             {
                 "recurrence_fingerprint": fingerprint,
                 "event_class": event_class,
+                "canonical_rule_id": canonical_rule_id,
                 "occurrence_count": len(members),
                 "distinct_scope_count": len(scopes),
                 "distinct_producer_count": len(producers),
