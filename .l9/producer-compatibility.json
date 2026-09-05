@@ -4,10 +4,14 @@
   "producers": {
     "Quantum-L9/l9-ci-debt-intelligence": {
       "status": "active",
-      "event_classes": ["verification_outcome"],
-      "contract_versions": ["l9.historical-resolution-episode/v1"],
+      "event_classes": [
+        "CI_failure_classification",
+        "repair_attempt",
+        "verification_outcome"
+      ],
+      "contract_versions": ["l9.historical-resolution-event/v1"],
       "required_sdk_contract": "l9.integration-contract/v1",
-      "ingestion_route": "Historical mining projects derived resolution episodes onto Intelligence-owned l9.corpus-event/v1 and submits them to the existing INTEL-P1 ingestion service. Historical runtime code does not access canonical corpus storage directly."
+      "ingestion_route": "Historical mining emits l9.historical-resolution-event/v1. Intelligence validates that native contract through HistoricalResolutionAdapter, projects it onto l9.corpus-event/v1, and invokes the existing INTEL-P1 IngestionService. The miner never manufactures corpus record or ledger identity."
     },
     "Quantum-L9/l9-ci-sdk": {
       "status": "active",
@@ -32,20 +36,14 @@
     "Quantum-L9/PR_Repair": {
       "status": "planned",
       "planned_reason": "PR_Repair does not emit l9.repair-learning-packet/v1 and is a standalone PR assistant outside the debt pipeline in v0.1.",
-      "event_classes": [
-        "repair_attempt",
-        "verification_outcome"
-      ],
+      "event_classes": ["repair_attempt", "verification_outcome"],
       "contract_versions": ["l9.repair-learning-packet/v1"],
       "required_sdk_contract": "l9.integration-contract/v1"
     },
     "Quantum-L9/l9-ci-debt-lsp": {
       "status": "planned",
       "planned_reason": "l9-ci-debt-lsp does not emit l9.editor-outcome-event/v1; its active seam is defense-pack consumption, not corpus production.",
-      "event_classes": [
-        "editor_diagnostic_outcome",
-        "false_positive_disposition"
-      ],
+      "event_classes": ["editor_diagnostic_outcome", "false_positive_disposition"],
       "contract_versions": ["l9.editor-outcome-event/v1"],
       "required_sdk_contract": "l9.integration-contract/v1"
     }
