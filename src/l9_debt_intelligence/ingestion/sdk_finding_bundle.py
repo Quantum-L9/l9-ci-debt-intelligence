@@ -54,7 +54,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from l9_debt_intelligence.contracts.canonical import sha256_document
 from l9_debt_intelligence.contracts.errors import ContractError
 
-from .identity import path_token, repository_pseudonym
+from .identity import path_token, repository_pseudonym, require_distinct_keys
 
 PRODUCER_ID = "Quantum-L9/l9-ci-sdk"
 PRODUCER_CONTRACT = "l9.finding-bundle/v1"
@@ -159,6 +159,7 @@ class SdkFindingBundleAdapter:
         path, not an identity. Requiring it explicitly is what lets the record
         join to Resolver records for the same repository under a shared key.
         """
+        require_distinct_keys(pseudonym_key=pseudonym_key, path_key=path_key)
         self.validate(document)
         native = dict(document)
         redacted = self.redact(native, path_key=path_key)

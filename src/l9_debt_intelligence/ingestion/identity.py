@@ -65,6 +65,12 @@ def _keyed_digest(key: bytes, value: str, *, purpose: str) -> str:
     trivially reversible by hashing a candidate wordlist, so an unkeyed
     "pseudonym" would be a pseudonym in name only.
 
+    `purpose` names the caller in the error message and is deliberately NOT
+    mixed into the digest: the construction stays bit-compatible with the
+    Resolver's, which digests the bare value. Domain separation therefore
+    comes from the keys being different, which `require_distinct_keys`
+    enforces -- do not read this parameter as providing it.
+
     The key must be stable for the life of the corpus. Rotating it
     re-pseudonymises every subsequent record, so longitudinal joins on
     repository identity silently split at the rotation boundary rather than
@@ -73,6 +79,29 @@ def _keyed_digest(key: bytes, value: str, *, purpose: str) -> str:
     if len(key) < 32:
         raise ValueError(f"{purpose} key must be at least 32 bytes")
     return hmac.new(key, value.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def require_distinct_keys(*, pseudonym_key: bytes, path_key: bytes) -> None:
+    """Refuse one key doing both jobs.
+
+    The construction is deliberately bit-compatible with the Resolver's, which
+    means the digest is over the bare value with no domain-separating prefix.
+    That is fine while the two purposes use different keys and unsafe the
+    moment they do not: with one key, a repository named `acme/widgets` and a
+    source path `acme/widgets` produce the identical digest, so a path token
+    and a repository pseudonym become interchangeable.
+
+    Nothing about two environment variables stops an operator setting both to
+    the same value, and the failure is invisible in the output -- every token
+    still looks like a well-formed pseudonym. So it is refused here rather
+    than defended against downstream.
+    """
+    if pseudonym_key == path_key:
+        raise ValueError(
+            "the repository-pseudonym key and the path-token key must differ; "
+            "one key serving both purposes makes a path token and a repository "
+            "pseudonym collide for the same input string"
+        )
 
 
 def repository_pseudonym(*, repository: str, pseudonym_key: bytes) -> str:
