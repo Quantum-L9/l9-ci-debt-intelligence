@@ -70,9 +70,7 @@ def normalize_observation(
                     ),
                     "base_revision": base,
                     "head_revision": head,
-                    "merge_commit_revision": _string(
-                        payload.get("merge_commit_sha")
-                    ),
+                    "merge_commit_revision": _string(payload.get("merge_commit_sha")),
                     "merge_method_hint": merge_method,
                     "merged": (
                         bool(payload.get("merged")) if "merged" in payload else None
@@ -133,12 +131,9 @@ def normalize_observation(
                 "change_fingerprint": sha256_document(files),
                 "file_count": len(files),
                 "workflow_changed": any(
-                    str(item["path"]).startswith(".github/workflows/")
-                    for item in files
+                    str(item["path"]).startswith(".github/workflows/") for item in files
                 ),
-                "test_changed": any(
-                    _is_test(str(item["path"])) for item in files
-                ),
+                "test_changed": any(_is_test(str(item["path"])) for item in files),
                 "environment_changed": any(
                     _is_env(str(item["path"])) for item in files
                 ),
@@ -440,9 +435,7 @@ def _is_test(path: str) -> bool:
 
 def _is_env(path: str) -> bool:
     basename = path.lower().rsplit("/", 1)[-1]
-    return basename in _ENVIRONMENT_BASENAMES or basename.startswith(
-        "requirements-"
-    )
+    return basename in _ENVIRONMENT_BASENAMES or basename.startswith("requirements-")
 
 
 def _is_lock(path: str) -> bool:

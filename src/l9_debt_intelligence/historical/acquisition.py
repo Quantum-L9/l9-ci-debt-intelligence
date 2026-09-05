@@ -56,12 +56,15 @@ class CheckpointStore:
         )
         self._root.mkdir(parents=True, exist_ok=True)
         destination = self._root / f"{checkpoint_id}.json"
-        payload = json.dumps(
-            document,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ) + "\n"
+        payload = (
+            json.dumps(
+                document,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        )
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",

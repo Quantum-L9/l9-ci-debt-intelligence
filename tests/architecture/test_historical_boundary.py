@@ -51,9 +51,7 @@ class HistoricalBoundaryTests(unittest.TestCase):
             "evidence_id",
             "source_location",
         }
-        for path in sorted(
-            (ROOT / "schemas/intelligence").glob("historical-*.json")
-        ):
+        for path in sorted((ROOT / "schemas/intelligence").glob("historical-*.json")):
             text = json.dumps(
                 json.loads(path.read_text(encoding="utf-8")), sort_keys=True
             )

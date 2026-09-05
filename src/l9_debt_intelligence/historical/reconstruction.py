@@ -31,8 +31,7 @@ class TemporalEvidenceGraph:
         return {
             "schema_version": "l9.historical-temporal-evidence-graph/v1",
             "nodes": [
-                {"id": node_id, "type": node_type}
-                for node_id, node_type in self.nodes
+                {"id": node_id, "type": node_type} for node_id, node_type in self.nodes
             ],
             "edges": [
                 {"type": edge_type, "source": source, "target": target}
@@ -165,9 +164,7 @@ def reconstruct_episodes(
         before_execution = _string(failure.data.get("execution_ref"))
         before_job_ref = _string(failure.data.get("job_ref"))
         job_name = _string(failure.data.get("job_name"))
-        semantic_identity = _string(
-            failure.data.get("semantic_failure_identity")
-        )
+        semantic_identity = _string(failure.data.get("semantic_failure_identity"))
         if None in {
             before_execution,
             before_job_ref,
@@ -195,11 +192,7 @@ def reconstruct_episodes(
         after_execution = _string(after.data.get("execution_ref"))
         before_revision = _string(before.data.get("revision"))
         after_revision = _string(after.data.get("revision"))
-        if (
-            after_execution is None
-            or before_revision is None
-            or after_revision is None
-        ):
+        if after_execution is None or before_revision is None or after_revision is None:
             continue
 
         after_jobs = jobs_by_run.get(after_execution, ())
@@ -281,9 +274,7 @@ def reconstruct_episodes(
                 "failure_refs": [failure.observation_id],
                 "semantic_failure_identity": semantic_identity,
                 "identity_authority": failure.data.get("identity_authority"),
-                "occurrence_identities": [
-                    failure.data.get("occurrence_identity")
-                ],
+                "occurrence_identities": [failure.data.get("occurrence_identity")],
                 "evidence_availability": failure.evidence_availability,
                 "execution_ref": before_execution,
                 "provider_time": failure_time,

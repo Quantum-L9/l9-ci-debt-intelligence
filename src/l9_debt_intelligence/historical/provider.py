@@ -44,10 +44,7 @@ class UrlLibTransport:
         except error.HTTPError as exc:
             return HttpResponse(
                 int(exc.code),
-                {
-                    str(key).lower(): str(value)
-                    for key, value in exc.headers.items()
-                },
+                {str(key).lower(): str(value) for key, value in exc.headers.items()},
                 exc.read(),
             )
         except error.URLError as exc:

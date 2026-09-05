@@ -83,10 +83,7 @@ def assess_attribution(
             min(equivalence.completeness, 50),
             tuple(
                 sorted(
-                    set(
-                        equivalence.reasons
-                        + ("validation_equivalence_not_proved",)
-                    )
+                    set(equivalence.reasons + ("validation_equivalence_not_proved",))
                 )
             ),
             "outcome_unknown",
@@ -99,9 +96,7 @@ def assess_attribution(
         return AttributionAssessment(
             "U",
             "unresolved",
-            tuple(
-                sorted(set(confounders + ("intervention_evidence_missing",)))
-            ),
+            tuple(sorted(set(confounders + ("intervention_evidence_missing",)))),
             min(equivalence.completeness, 50),
             ("revision changed without complete intervention evidence",),
             "outcome_unknown",

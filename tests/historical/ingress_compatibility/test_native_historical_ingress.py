@@ -53,9 +53,7 @@ def _native(kind: str) -> dict[str, Any]:
         },
         "source": {"provider": "github", "workflow_run_ref": "19281272"},
         "limitations": ["original_job_log_expired"],
-        "unknowns": [
-            {"field": "canonical_rule_id", "reason": "not_observed"}
-        ],
+        "unknowns": [{"field": "canonical_rule_id", "reason": "not_observed"}],
         "provenance": {
             "reconstruction_algorithm": "historical-reconstructor/1",
             "source_observation_hashes": ["9234", "a781"],
@@ -77,9 +75,7 @@ def _native(kind: str) -> dict[str, Any]:
     "kind",
     ["CI_failure_classification", "repair_attempt", "verification_outcome"],
 )
-def test_native_historical_event_traverses_real_p1(
-    kind: str, tmp_path: Path
-) -> None:
+def test_native_historical_event_traverses_real_p1(kind: str, tmp_path: Path) -> None:
     adapter = _adapter()
     service = _service(tmp_path)
     projected = adapter.project(_native(kind))
@@ -116,9 +112,7 @@ def test_sensitive_native_payload_is_quarantined_by_real_p1(
     tmp_path: Path,
 ) -> None:
     native = _native("verification_outcome")
-    native["source"]["authorization"] = (
-        "Bearer ghp_abcdefghijklmnopqrstuvwxyz123456"
-    )
+    native["source"]["authorization"] = "Bearer ghp_abcdefghijklmnopqrstuvwxyz123456"
     projected = _adapter().project(native)
     result = _service(tmp_path).ingest(projected)
     assert result.status == "quarantined"

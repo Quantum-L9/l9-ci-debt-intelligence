@@ -38,12 +38,15 @@ class HistoricalDerivedStore:
     @staticmethod
     def _write(path: Path, document: dict[str, Any]) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
-        payload = json.dumps(
-            document,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ) + "\n"
+        payload = (
+            json.dumps(
+                document,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        )
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
