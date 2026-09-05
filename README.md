@@ -75,6 +75,66 @@ token from `L9_INTELLIGENCE_INGRESS_TOKEN` (never a flag), and **must** run
 behind TLS termination — it terminates no TLS itself, and the resolver refuses
 any endpoint that is not `https://`.
 
+`ingest-sdk-finding-bundle` takes a native `l9.finding-bundle/v1` document as
+`Quantum-L9/l9-ci-sdk` emits it, **redacts it**, and projects it onto
+`l9.corpus-event/v1` with `redaction_status: intelligence_redacted`. Unlike the
+resolver seam it does not carry the producer document whole: a finding bundle
+names repository-relative source paths and the exact revision, and the
+ingestion redaction check does not catch either (its `ABSOLUTE_PATH` pattern
+matches `/home`, `/Users`, `C:\` only). Paths become keyed tokens, the
+repository becomes a keyed pseudonym, the revision is hashed, and rule
+identity, severity, fingerprints, counts and coverage survive.
+
+```bash
+L9_INTELLIGENCE_PSEUDONYM_KEY=... L9_INTELLIGENCE_PATH_KEY=... \
+  l9-intelligence ingest-sdk-finding-bundle <bundle.json> \
+    --repository <owner/name> --storage-root <dir>
+```
+
+`--repository` is required because a finding bundle does not name the
+repository it scanned (`snapshot.repository_root` is a local path, not an
+identity). It is pseudonymised, never stored.
+
+### Corpus key material
+
+Two keys, both from the environment and never flags — a key on the command line
+lands in shell history and in every process listing:
+
+| Variable | Keys |
+|---|---|
+| `L9_INTELLIGENCE_PSEUDONYM_KEY` | the repository pseudonym |
+| `L9_INTELLIGENCE_PATH_KEY` | source path tokens |
+
+Refs are declared in Cursor-Governance `ops/secrets/registry.overlays.yaml`
+under `openclaw-igorbot/l9-intelligence-corpus`. Values live in AWS Secrets
+Manager; the registry never holds one.
+
+Four properties an operator has to get right, because none of them fail loudly
+on their own:
+
+1. **At least 32 bytes each.** Enforced; a shorter key is refused before a
+   bundle is read.
+2. **The two must differ.** Enforced. The construction is bit-compatible with
+   the Resolver's, which digests the bare value with no domain-separating
+   prefix, so it is the key difference that separates the two namespaces. Under
+   one key a repository `acme/widgets` and a path `acme/widgets` produce the
+   identical digest.
+3. **Stable for the life of the corpus.** Rotation re-pseudonymises every
+   subsequent record, so longitudinal joins split silently at the rotation
+   boundary — every token still looks well-formed. Rotate only with a corpus
+   migration that re-keys or partitions the existing records.
+4. **Shared with any other producer that pseudonymises.** One repository must
+   carry one identity across the corpus regardless of which producer a record
+   came from. Today this seam is the only production consumer of these keys:
+   the Resolver ships the same primitives and declares
+   `repository_pseudonymization`, but nothing in its runtime builds a keyed
+   event, so there is no existing key to inherit — this seam sets the value the
+   Resolver will need to adopt when its own path is wired.
+
+There is deliberately no default and no generated fallback. A missing key stops
+ingestion, because ingesting under a fresh random key yields a corpus whose
+pseudonyms join to nothing and looks entirely healthy.
+
 **P2 — snapshots**
 
 ```bash

@@ -214,3 +214,52 @@ class SdkFindingBundleSeam(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class KeyMaterial(unittest.TestCase):
+    """One key doing both jobs is an operator mistake with an invisible failure."""
+
+    def test_the_two_keys_must_differ(self) -> None:
+        same = b"s" * 48
+        with self.assertRaisesRegex(ValueError, "must differ"):
+            SdkFindingBundleAdapter().project(
+                _native(),
+                repository=REPOSITORY,
+                pseudonym_key=same,
+                path_key=same,
+            )
+
+    def test_one_key_would_collide_a_path_token_with_a_pseudonym(self) -> None:
+        """The concrete reason the guard exists, asserted rather than described.
+
+        The digest is over the bare value with no domain-separating prefix, so
+        it is the key difference that separates the two namespaces. Strip that
+        and the same input yields the same digest under both helpers.
+        """
+        from l9_debt_intelligence.ingestion.identity import (
+            path_token,
+            repository_pseudonym,
+        )
+
+        collided = "acme/widgets"
+        one_key = b"s" * 48
+        pseudonym = repository_pseudonym(repository=collided, pseudonym_key=one_key)
+        token = path_token(repository_path=collided, path_key=one_key)
+        self.assertEqual(
+            pseudonym.removeprefix("repository_"), token.removeprefix("path_")
+        )
+
+    def test_distinct_keys_do_not_collide(self) -> None:
+        from l9_debt_intelligence.ingestion.identity import (
+            path_token,
+            repository_pseudonym,
+        )
+
+        collided = "acme/widgets"
+        pseudonym = repository_pseudonym(
+            repository=collided, pseudonym_key=PSEUDONYM_KEY
+        )
+        token = path_token(repository_path=collided, path_key=PATH_KEY)
+        self.assertNotEqual(
+            pseudonym.removeprefix("repository_"), token.removeprefix("path_")
+        )
