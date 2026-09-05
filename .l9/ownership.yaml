@@ -13,6 +13,15 @@ intelligence_owns:
     - accepted producer event classes
     - accepted producer contract versions
     - minimum SDK contract requirements
+  historical_mining:
+    - provider acquisition adapters
+    - historical acquisition observations
+    - pre-normalization safety screening
+    - provider-neutral historical observations
+    - temporal evidence reconstruction
+    - historical resolution episodes
+    - evidence grading and bounded attribution
+    - historical corpus projection
   future_compilation:
     - corpus snapshots
     - candidate prevention rules
@@ -34,3 +43,5 @@ prohibited:
   - weakening Core policy
   - importing producer implementation packages
   - fabricating unavailable producer fields
+  - historical direct corpus store writes
+  - historical direct snapshot store writes

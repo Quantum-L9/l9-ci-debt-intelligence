@@ -1,0 +1,23 @@
+[
+  {"name":"fail_pass_without_change","expected":"flake_no_repair_credit"},
+  {"name":"failure_then_job_removed","expected":"non_equivalent_unknown"},
+  {"name":"failure_then_test_disabled","expected":"non_equivalent_unknown"},
+  {"name":"fail_fail_pass","expected":"negative_then_positive_evidence"},
+  {"name":"fail_new_failure_pass","expected":"new_failure_then_recovery"},
+  {"name":"multiple_failures_single_commit","expected":"multiple_failure_confounder"},
+  {"name":"multiple_commits_single_transition","expected":"grade_c_cap"},
+  {"name":"missing_logs","expected":"direct_metadata_still_usable"},
+  {"name":"expired_checks","expected":"direct_job_metadata_still_usable"},
+  {"name":"cancelled_run","expected":"unknown"},
+  {"name":"rerun_attempt","expected":"no_repair_credit"},
+  {"name":"flaky_same_sha","expected":"flake_no_repair_credit"},
+  {"name":"merge_commit","expected":"grade_c_cap"},
+  {"name":"squash_merge","expected":"grade_c_when_provider_hint_exists"},
+  {"name":"workflow_changed","expected":"non_equivalent_unknown"},
+  {"name":"dependency_environment_changed","expected":"non_equivalent_unknown"},
+  {"name":"sensitive_log","expected":"quarantine_before_normalization"},
+  {"name":"duplicate_delivery","expected":"converges"},
+  {"name":"source_identity_collision","expected":"quarantine"},
+  {"name":"reconstruction_algorithm_upgrade","expected":"new_versioned_derived_claim"},
+  {"name":"replay_non_equivalent_environment","expected":"no_high_grade_credit"}
+]
