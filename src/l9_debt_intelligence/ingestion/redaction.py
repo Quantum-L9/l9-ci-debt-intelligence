@@ -32,6 +32,35 @@ ABSOLUTE_PATH = re.compile(
     r"(?<![A-Za-z0-9_.-])[A-Za-z]:\\[^\s]+"
     r")"
 )
+# A full git object id: exactly 40 hex characters standing alone.
+#
+# A commit SHA is globally searchable, so an event carrying one alongside a
+# repository pseudonym is not pseudonymous -- the pseudonym is decorative. This
+# check existed for absolute paths and sensitive keys and would have caught
+# neither a bare SHA nor, as the module has long noted, a repository-relative
+# source path; the SDK adapter carried a raw snapshot id past it for exactly
+# that reason.
+#
+# Bounded to 40 characters deliberately, so it cannot fire on a correctly
+# redacted event: Intelligence's own digests are sha256 (64 hex), and the word
+# boundary this pattern needs after 40 characters does not exist inside a
+# 64-character hex run. Pseudonyms and path tokens carry `repository_` and
+# `path_` prefixes and are likewise unaffected.
+#
+# Abbreviated ids (7-12 hex) are not matched: too many legitimate short tokens
+# are hex, and a check that quarantined those would be turned off rather than
+# fixed. This is a floor, not a proof of pseudonymity.
+GIT_OBJECT_ID = re.compile(r"\b[0-9a-fA-F]{40}\b")
+# Envelope fields that carry producer-supplied values. `payload` alone was
+# inspected before, which is why a raw snapshot id sitting in
+# `snapshot_or_run_id` -- one level up -- passed unexamined.
+INSPECTED_EVENT_FIELDS = (
+    "snapshot_or_run_id",
+    "limitations",
+    "unknowns",
+    "lineage",
+    "payload",
+)
 
 
 def inspect_value(
@@ -66,6 +95,8 @@ def inspect_value(
                 break
         if ABSOLUTE_PATH.search(value):
             findings.append(f"absolute-path:{'.'.join(path)}")
+        if GIT_OBJECT_ID.search(value):
+            findings.append(f"git-object-id:{'.'.join(path)}")
     return findings
 
 
@@ -77,7 +108,11 @@ def assess_redaction(event: dict[str, Any]) -> RedactionAssessment:
             reason="redaction_required",
             limitations=("producer marked the event as requiring quarantine",),
         )
-    findings = sorted(set(inspect_value(event.get("payload", {}))))
+    findings: list[str] = []
+    for field in INSPECTED_EVENT_FIELDS:
+        if field in event:
+            findings.extend(inspect_value(event[field], path=(field,)))
+    findings = sorted(set(findings))
     if findings:
         return RedactionAssessment(
             safe=False,
