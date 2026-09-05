@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from l9_debt_intelligence.ingestion.historical_resolution import HistoricalResolutionAdapter
+from l9_debt_intelligence.ingestion.historical_resolution import (
+    HistoricalResolutionAdapter,
+)
 from l9_debt_intelligence.ingestion.models import IngestionResult
 from l9_debt_intelligence.ingestion.service import IngestionService
 
@@ -64,7 +66,11 @@ def run_bootstrap(
     harvest = HistoricalHarvester(
         provider=provider,
         checkpoint_store=CheckpointStore(state_root / "checkpoints"),
-    ).harvest(repository=repository, pr_number=pr_number, include_logs=include_logs)
+    ).harvest(
+        repository=repository,
+        pr_number=pr_number,
+        include_logs=include_logs,
+    )
     safety = screen_observations(harvest.observations)
     normalized = normalize_observations(safety.safe)
     episodes = reconstruct_episodes(
@@ -72,18 +78,20 @@ def run_bootstrap(
         closed_loop_lineage=closed_loop_lineage,
     )
     store = HistoricalDerivedStore(state_root / "derived")
-    for item in safety.quarantined:
-        store.write_quarantine(item)
-    for item in normalized:
-        store.write_normalized(item)
-    for item in episodes:
-        store.write_episode(item)
+    for quarantined_item in safety.quarantined:
+        store.write_quarantine(quarantined_item)
+    for normalized_item in normalized:
+        store.write_normalized(normalized_item)
+    for episode_item in episodes:
+        store.write_episode(episode_item)
 
     root = repository_root()
     native_projector = HistoricalEventProjector(pseudonym_key=pseudonym_key)
     ingress_adapter = HistoricalResolutionAdapter(
-        consumer_schema=root
-        / "schemas/intelligence/consumers/historical-resolution-event.schema.json"
+        consumer_schema=(
+            root
+            / "schemas/intelligence/consumers/historical-resolution-event.schema.json"
+        )
     )
     hydrated_episodes = tuple(
         hydrate_projection_context(episode, normalized) for episode in episodes
@@ -136,7 +144,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     state = args.state_root.resolve()
     corpus = args.storage_root.resolve()
     if _is_relative_to(state, corpus) or _is_relative_to(corpus, state):
-        raise ValueError("historical state and canonical corpus storage must be separate")
+        raise ValueError(
+            "historical state and canonical corpus storage must be separate"
+        )
     _assert_state_root(corpus)
     root = repository_root()
     ingress = IngestionService(
@@ -160,12 +170,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(json.dumps(result.as_dict(), sort_keys=True, indent=2))
     statuses = {item.status for item in result.admission_results}
-    return 0 if result.native_events and statuses.issubset({"accepted", "duplicate"}) else 3
+    allowed_statuses = {"accepted", "duplicate"}
+    return 0 if result.native_events and statuses.issubset(allowed_statuses) else 3
 
 
 def _assert_state_root(path: Path) -> None:
     if _is_relative_to(path.resolve(), repository_root().resolve()):
-        raise ValueError("historical runtime state must be outside the source repository")
+        raise ValueError(
+            "historical runtime state must be outside the source repository"
+        )
 
 
 def _is_relative_to(path: Path, parent: Path) -> bool:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from .contracts import (
     AttributionClass,
@@ -222,4 +222,4 @@ def _conclusion(job: NormalizedObservation | None) -> str | None:
     if job is None:
         return None
     value = job.data.get("conclusion")
-    return cast(str | None, value if isinstance(value, str) else None)
+    return value if isinstance(value, str) else None

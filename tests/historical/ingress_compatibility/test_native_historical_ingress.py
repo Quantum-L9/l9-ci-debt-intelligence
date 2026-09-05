@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from l9_debt_intelligence.ingestion.historical_resolution import HistoricalResolutionAdapter
+from l9_debt_intelligence.contracts.errors import SchemaValidationError
+from l9_debt_intelligence.ingestion.historical_resolution import (
+    HistoricalResolutionAdapter,
+)
 from l9_debt_intelligence.ingestion.service import IngestionService
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -13,8 +17,10 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def _adapter() -> HistoricalResolutionAdapter:
     return HistoricalResolutionAdapter(
-        consumer_schema=ROOT
-        / "schemas/intelligence/consumers/historical-resolution-event.schema.json"
+        consumer_schema=(
+            ROOT
+            / "schemas/intelligence/consumers/historical-resolution-event.schema.json"
+        )
     )
 
 
@@ -26,8 +32,8 @@ def _service(tmp_path: Path) -> IngestionService:
     )
 
 
-def _native(kind: str) -> dict[str, object]:
-    event = {
+def _native(kind: str) -> dict[str, Any]:
+    event: dict[str, Any] = {
         "schema_version": "l9.historical-resolution-event/v1",
         "event_id": f"historical.hep_fixture.{kind}",
         "episode_id": "hep_fixture",
@@ -47,7 +53,9 @@ def _native(kind: str) -> dict[str, object]:
         },
         "source": {"provider": "github", "workflow_run_ref": "19281272"},
         "limitations": ["original_job_log_expired"],
-        "unknowns": [{"field": "canonical_rule_id", "reason": "not_observed"}],
+        "unknowns": [
+            {"field": "canonical_rule_id", "reason": "not_observed"}
+        ],
         "provenance": {
             "reconstruction_algorithm": "historical-reconstructor/1",
             "source_observation_hashes": ["9234", "a781"],
@@ -69,7 +77,9 @@ def _native(kind: str) -> dict[str, object]:
     "kind",
     ["CI_failure_classification", "repair_attempt", "verification_outcome"],
 )
-def test_native_historical_event_traverses_real_p1(kind: str, tmp_path: Path) -> None:
+def test_native_historical_event_traverses_real_p1(
+    kind: str, tmp_path: Path
+) -> None:
     adapter = _adapter()
     service = _service(tmp_path)
     projected = adapter.project(_native(kind))
@@ -91,7 +101,7 @@ def test_additive_native_field_is_preserved(tmp_path: Path) -> None:
 def test_float_diagnostic_is_rejected_before_p1() -> None:
     native = _native("verification_outcome")
     native["historical_evidence"]["causal_confidence"] = 0.94
-    with pytest.raises(Exception):
+    with pytest.raises(SchemaValidationError):
         _adapter().project(native)
 
 
@@ -102,9 +112,13 @@ def test_unknown_contract_is_quarantined_by_real_p1(tmp_path: Path) -> None:
     assert result.status == "quarantined"
 
 
-def test_sensitive_native_payload_is_quarantined_by_real_p1(tmp_path: Path) -> None:
+def test_sensitive_native_payload_is_quarantined_by_real_p1(
+    tmp_path: Path,
+) -> None:
     native = _native("verification_outcome")
-    native["source"]["authorization"] = "Bearer ghp_abcdefghijklmnopqrstuvwxyz123456"
+    native["source"]["authorization"] = (
+        "Bearer ghp_abcdefghijklmnopqrstuvwxyz123456"
+    )
     projected = _adapter().project(native)
     result = _service(tmp_path).ingest(projected)
     assert result.status == "quarantined"

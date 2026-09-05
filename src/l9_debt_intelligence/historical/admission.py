@@ -69,8 +69,12 @@ class HistoricalEventProjector:
             raise ValueError("pseudonym key must be at least 32 bytes")
         self._pseudonym_key = pseudonym_key
 
-    def project(self, episode: ResolutionEpisode) -> tuple[HistoricalResolutionEvent, ...]:
-        repository = _required_string(episode.context.get("repository_ref"), "repository_ref")
+    def project(
+        self, episode: ResolutionEpisode
+    ) -> tuple[HistoricalResolutionEvent, ...]:
+        repository = _required_string(
+            episode.context.get("repository_ref"), "repository_ref"
+        )
         repository_identity = repository_pseudonym(
             repository=repository,
             pseudonym_key=self._pseudonym_key,
@@ -236,9 +240,13 @@ def _unknowns(
 
 def _attribution_strength(episode: ResolutionEpisode) -> str:
     grade = episode.attribution.get("evidence_grade")
-    return {"A": "strong", "B": "strong", "C": "moderate", "D": "weak"}.get(
-        grade, "unknown"
-    )
+    strengths = {
+        "A": "strong",
+        "B": "strong",
+        "C": "moderate",
+        "D": "weak",
+    }
+    return strengths.get(grade, "unknown") if isinstance(grade, str) else "unknown"
 
 
 def _digest_revision(value: Any) -> str | None:

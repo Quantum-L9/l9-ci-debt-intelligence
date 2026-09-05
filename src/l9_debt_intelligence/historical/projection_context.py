@@ -70,7 +70,10 @@ def _run_time(
     observations: tuple[NormalizedObservation, ...], execution_ref: str | None
 ) -> str | None:
     for item in observations:
-        if item.kind == "ci_execution" and item.data.get("execution_ref") == execution_ref:
+        if (
+            item.kind == "ci_execution"
+            and item.data.get("execution_ref") == execution_ref
+        ):
             return _string(item.data.get("updated_at")) or _string(
                 item.data.get("created_at")
             )
