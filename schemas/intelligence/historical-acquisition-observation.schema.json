@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9://intelligence/historical-acquisition-observation/v1",
+  "title": "L9 Historical Acquisition Observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observation_id",
+    "provider",
+    "repository_ref",
+    "object_kind",
+    "provider_object_id",
+    "observed_content_digest",
+    "collection_contract_version",
+    "limitations",
+    "provenance",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {"const": "l9.historical-acquisition-observation/v1"},
+    "observation_id": {"type": "string", "pattern": "^hso_[0-9a-f]{64}$"},
+    "provider": {"type": "string", "minLength": 1},
+    "repository_ref": {"type": "string", "minLength": 1},
+    "object_kind": {"type": "string", "minLength": 1},
+    "provider_object_id": {"type": "string", "minLength": 1},
+    "observed_content_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "collection_contract_version": {"type": "string", "minLength": 1},
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "provenance": {"type": "object"},
+    "payload": {}
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9://intelligence/consumers/historical-resolution-event/v1",
+  "title": "Intelligence consumer view of l9.historical-resolution-event/v1",
+  "description": "Compatibility subset consumed by HistoricalResolutionAdapter. The historical producer contract remains independent; additive fields are permitted.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "event_id",
+    "episode_id",
+    "observation_kind",
+    "occurred_at",
+    "repository_identity",
+    "snapshot_or_run_id",
+    "parent_event_ids",
+    "historical_evidence",
+    "source",
+    "limitations",
+    "unknowns",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "l9.historical-resolution-event/v1"},
+    "event_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "episode_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "observation_kind": {
+      "enum": [
+        "CI_failure_classification",
+        "repair_attempt",
+        "verification_outcome"
+      ]
+    },
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "repository_identity": {"type": "string", "pattern": "^repository_[0-9a-f]{64}$"},
+    "snapshot_or_run_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "parent_event_ids": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "failure": {"type": ["object", "null"]},
+    "intervention": {"type": ["object", "null"]},
+    "validation": {"type": ["object", "null"]},
+    "historical_evidence": {"type": "object"},
+    "source": {"type": "object"},
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "reason"],
+        "properties": {
+          "field": {"type": "string", "minLength": 1},
+          "reason": {
+            "enum": [
+              "not_observed",
+              "not_applicable",
+              "producer_did_not_emit",
+              "redacted",
+              "incompatible_version",
+              "unavailable"
+            ]
+          }
+        }
+      }
+    },
+    "provenance": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"observation_kind": {"const": "CI_failure_classification"}}},
+      "then": {"required": ["failure"]}
+    },
+    {
+      "if": {"properties": {"observation_kind": {"const": "repair_attempt"}}},
+      "then": {"required": ["intervention"]}
+    },
+    {
+      "if": {"properties": {"observation_kind": {"const": "verification_outcome"}}},
+      "then": {"required": ["validation"]}
+    }
+  ]
+}

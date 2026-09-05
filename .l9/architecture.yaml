@@ -49,6 +49,41 @@ does_not_own:
   - repository patching
   - branch operations
   - repair execution
+historical_mining:
+  status: implemented
+  role: upstream-corpus-producer
+  corpus_ingress: existing_INTEL_P1
+  pipeline:
+    - discovery
+    - acquisition
+    - safety_screen
+    - provider_neutral_normalization
+    - temporal_reconstruction
+    - bounded_attribution
+    - admission_projection
+    - existing_INTEL_P1
+  authority:
+    acquisition_observations: non_authoritative
+    reconstructed_claims: derived_and_versioned
+    corpus_admission: existing_INTEL_P1
+  invariants:
+    - current_live_CI_truth_outranks_history
+    - resolution_episode_is_learning_atom
+    - validation_equivalence_required_for_resolution_credit
+    - unknown_never_becomes_success
+    - raw_logs_never_enter_corpus_or_snapshots
+    - repeated_execution_converges
+    - no_direct_corpus_or_snapshot_store_write
+    - no_source_repository_mutation
+  deferred:
+    - organization_wide_scheduler
+    - harness_replay
+    - AST_change_classification
+    - cross_repository_clustering
+    - PR_Repair_learning_packets
+    - automated_strategy_ranking
+    - historical_rule_compilation
+    - fleet_scale
 phase_1:
   name: schema-federation
   status: implemented

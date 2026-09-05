@@ -13,7 +13,13 @@ Corpus record identity is derived from:
 - normalized payload hash.
 Repeated observations of the same logical record append ledger entries but do
 not create additional corpus records.
+Historical acquisition, reconstruction, and projection use deterministic
+content identities. Arrival order, local sequence numbers, checkpoints,
+machine identity, and local paths never participate in historical logical
+identity.
 ## Consequences
 Arrival timestamps and ledger sequence numbers identify observations, not
 corpus records.
 A record identity collision with a different normalized payload is quarantined.
+Repeated historical harvest, reconstruction, and P1 projection converge rather
+than multiplying logical evidence.

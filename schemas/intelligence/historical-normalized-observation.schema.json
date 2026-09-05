@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9://intelligence/historical-normalized-observation/v1",
+  "title": "L9 Historical Normalized Observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observation_id",
+    "kind",
+    "repository_ref",
+    "provenance_refs",
+    "evidence_availability",
+    "limitations",
+    "normalization_version",
+    "data"
+  ],
+  "properties": {
+    "schema_version": {"const": "l9.historical-normalized-observation/v1"},
+    "observation_id": {"type": "string", "pattern": "^hno_[0-9a-f]{64}$"},
+    "kind": {
+      "enum": [
+        "ci_execution",
+        "ci_job",
+        "failure",
+        "commit",
+        "change",
+        "pull_request",
+        "validation",
+        "review_signal",
+        "textual_hint"
+      ]
+    },
+    "repository_ref": {"type": "string", "minLength": 1},
+    "provenance_refs": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^hso_[0-9a-f]{64}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "evidence_availability": {"type": "string", "minLength": 1},
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "normalization_version": {"type": "string", "minLength": 1},
+    "data": {"type": "object"}
+  }
+}

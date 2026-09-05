@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9://intelligence/historical-resolution-episode/v1",
+  "title": "L9 Historical Resolution Episode",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "episode_id",
+    "context",
+    "failure_state",
+    "intervention",
+    "validation",
+    "outcome",
+    "attribution",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "l9.historical-resolution-episode/v1"},
+    "episode_id": {"type": "string", "pattern": "^hep_[0-9a-f]{64}$"},
+    "context": {
+      "type": "object",
+      "required": ["repository_ref", "base_revision", "head_revision"],
+      "properties": {
+        "repository_ref": {"type": "string", "minLength": 1},
+        "pull_request_ref": {"type": ["integer", "null"]},
+        "base_revision": {"type": ["string", "null"]},
+        "head_revision": {"type": ["string", "null"]}
+      }
+    },
+    "failure_state": {
+      "type": "object",
+      "required": [
+        "failure_refs",
+        "semantic_failure_identity",
+        "identity_authority",
+        "occurrence_identities",
+        "evidence_availability"
+      ]
+    },
+    "intervention": {
+      "type": "object",
+      "required": [
+        "before_revision",
+        "after_revision",
+        "change_refs",
+        "change_fingerprint"
+      ]
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "validation_refs",
+        "execution_ref",
+        "equivalent_check_relationship",
+        "failure_after_state",
+        "newly_observed_failures",
+        "validation_completeness"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "clean_verified",
+        "target_failure_resolved",
+        "repeated_failure",
+        "new_failure",
+        "partial_resolution",
+        "rollback",
+        "superseded",
+        "unresolved",
+        "outcome_unknown"
+      ]
+    },
+    "attribution": {
+      "type": "object",
+      "required": [
+        "evidence_grade",
+        "attribution_class",
+        "confounders",
+        "evidence_completeness",
+        "limitations",
+        "suspected_flake"
+      ],
+      "properties": {
+        "evidence_grade": {"enum": ["A", "B", "C", "D", "U"]},
+        "attribution_class": {
+          "enum": [
+            "replay_verified",
+            "direct_transition_verified",
+            "transition_inferred",
+            "textual_hint",
+            "unresolved"
+          ]
+        },
+        "confounders": {"type": "array", "items": {"type": "string"}},
+        "evidence_completeness": {"type": "integer", "minimum": 0, "maximum": 100},
+        "limitations": {"type": "array", "items": {"type": "string"}},
+        "suspected_flake": {"type": "boolean"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "source_observation_refs",
+        "algorithm_version",
+        "schema_version",
+        "temporal_graph_digest",
+        "closed_loop_lineage"
+      ]
+    }
+  }
+}
