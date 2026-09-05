@@ -27,6 +27,20 @@ class DetachedSignature:
         }
 
 
+def _discard(path: Path) -> None:
+    """Best-effort removal during cleanup, never masking the original error.
+
+    Cleanup that can itself raise is not cleanup: the first attempt at this
+    called `Path.unlink` directly, and when the private key path was a
+    directory the `IsADirectoryError` from the cleanup escaped and left the
+    public half on disk -- the exact orphan the cleanup existed to prevent.
+    """
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        return
+
+
 def generate_keypair(
     *,
     private_key_path: Path,
@@ -45,9 +59,19 @@ def generate_keypair(
     )
     private_key_path.parent.mkdir(parents=True, exist_ok=True)
     public_key_path.parent.mkdir(parents=True, exist_ok=True)
-    private_key_path.write_bytes(private_bytes)
-    private_key_path.chmod(0o600)
+    # Both paths are written or neither is. A private key left behind by a
+    # half-finished keygen is worse than no key: the caller sees a failure and
+    # has no reason to look for the file, so signing material accumulates
+    # unnoticed. The public key is written first because it is the harmless
+    # half; if that fails, nothing secret has been created yet.
     public_key_path.write_bytes(public_bytes)
+    try:
+        private_key_path.write_bytes(private_bytes)
+        private_key_path.chmod(0o600)
+    except OSError:
+        _discard(private_key_path)
+        _discard(public_key_path)
+        raise
 
 
 def load_private_key(path: Path) -> Ed25519PrivateKey:
