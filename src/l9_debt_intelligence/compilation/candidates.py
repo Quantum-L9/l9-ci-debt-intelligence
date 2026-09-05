@@ -63,7 +63,16 @@ def extract_candidates(
             continue
         fingerprint = str(row["recurrence_fingerprint"])
         event_class = str(row["event_class"])
-        rule_effectiveness = effectiveness_index.get(None, {})
+        # Join on this row's own rule, falling back to the unattributed bucket.
+        # This was pinned at `.get(None)`, which could only ever reach the
+        # unattributed bucket because `recurrence_rows` emitted no rule id --
+        # so `repair_success` and `false_positive_safety`, 0.35 of the score
+        # between them, were unreachable for every rule-attributed candidate.
+        canonical_rule_id = row.get("canonical_rule_id")
+        rule_effectiveness = effectiveness_index.get(
+            canonical_rule_id if isinstance(canonical_rule_id, str) else None,
+            effectiveness_index.get(None, {}),
+        )
         score = calculate_score(
             occurrence_count=int(row["occurrence_count"]),
             distinct_scope_count=int(row["distinct_scope_count"]),
