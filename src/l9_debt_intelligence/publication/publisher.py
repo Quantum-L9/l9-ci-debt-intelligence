@@ -7,7 +7,7 @@ from typing import Any
 from l9_debt_intelligence.contracts.canonical import canonical_json
 from l9_debt_intelligence.snapshots.hashing import sha256_file
 
-from .crypto import sign_digest, verify_digest
+from .crypto import public_key_id, sign_digest, verify_digest
 from .errors import PublicationGateError
 
 CHANNELS = {
@@ -73,6 +73,11 @@ def sign_publication(
         "archive_size": archive.stat().st_size,
         "signature": detached.signature,
         "public_key": detached.public_key,
+        # Derived from the key that actually signed this archive, one line
+        # above. The consumer looks the trusted verification key up by this id
+        # and refuses a key whose recomputed id does not match, so it names the
+        # real signer rather than being a label carried alongside it.
+        "signer_key_id": public_key_id(detached.public_key),
         "signature_algorithm": detached.algorithm,
         "channel": channel,
         "rollback": {

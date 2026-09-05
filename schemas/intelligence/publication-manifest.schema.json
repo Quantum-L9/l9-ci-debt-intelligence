@@ -12,6 +12,7 @@
     "archive_size",
     "signature",
     "public_key",
+    "signer_key_id",
     "signature_algorithm",
     "channel",
     "rollback",
@@ -48,6 +49,11 @@
       "type": "string",
       "minLength": 1
     },
+    "signer_key_id": {
+      "type": "string",
+      "pattern": "^key_[0-9a-f]{64}$",
+      "description": "Identity of the key that signed archive_sha256, derived from the distributed public key. The consumer resolves its trusted verification key by this id and rejects a key whose recomputed id does not match."
+    },
     "signature_algorithm": {
       "const": "Ed25519"
     },
@@ -71,10 +77,16 @@
           "type": "boolean"
         },
         "previous_pack_version": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "previous_pack_sha256": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },

@@ -10,7 +10,42 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from l9_debt_intelligence.snapshots.hashing import namespaced_document_hash
+
 from .errors import SignatureVerificationError
+
+#: Namespace for the signer key identity. Consumer-defined, not ours to choose.
+#:
+#: `l9-ci-debt-lsp` resolves the trusted verification key by this id
+#: (`packs/trust.py::public_key_id`, `packs/installer.py`), and its registry
+#: loader recomputes the id from each trusted key and refuses a mismatch. So the
+#: derivation here must stay byte-identical to the consumer's: the same
+#: `key_` prefix, the same single-key document `{"raw_public_key": <hex>}`, and
+#: the same canonical JSON encoding -- which both repositories already spell
+#: identically (sorted keys, no spaces, `ensure_ascii=False`, `allow_nan=False`).
+#:
+#: Deriving it rather than storing it is deliberate: an id carried alongside the
+#: key could drift from the key it names, and the consumer would then reject a
+#: correctly signed pack for a reason no one could see in the manifest.
+_KEY_ID_PREFIX = "key_"
+_ED25519_PUBLIC_KEY_BYTES = 32
+
+
+def public_key_id(public_key_base64: str) -> str:
+    """The signer key identity for a base64 Ed25519 public key.
+
+    Mirrors `l9_debt_lsp.packs.trust.public_key_id`. See `_KEY_ID_PREFIX` for
+    why this is a mirror rather than an independent choice.
+    """
+    try:
+        raw = base64.b64decode(public_key_base64.encode("ascii"), validate=True)
+    except Exception as error:  # noqa: BLE001 - re-raised as a contract error
+        raise SignatureVerificationError("public key is not valid base64") from error
+    if len(raw) != _ED25519_PUBLIC_KEY_BYTES:
+        raise SignatureVerificationError(
+            f"Ed25519 public key must be {_ED25519_PUBLIC_KEY_BYTES} bytes"
+        )
+    return namespaced_document_hash(_KEY_ID_PREFIX, {"raw_public_key": raw.hex()})
 
 
 @dataclass(frozen=True)
