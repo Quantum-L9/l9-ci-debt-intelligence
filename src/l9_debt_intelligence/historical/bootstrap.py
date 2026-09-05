@@ -15,6 +15,7 @@ from l9_debt_intelligence.ingestion.service import IngestionService
 from .acquisition import CheckpointStore, HistoricalHarvester, HistoricalProvider
 from .admission import HistoricalEventProjector
 from .normalization import normalize_observations
+from .projection_context import hydrate_projection_context
 from .provider import GitHubHistoricalProvider
 from .reconstruction import reconstruct_episodes
 from .safety import screen_observations
@@ -84,9 +85,12 @@ def run_bootstrap(
         consumer_schema=root
         / "schemas/intelligence/consumers/historical-resolution-event.schema.json"
     )
+    hydrated_episodes = tuple(
+        hydrate_projection_context(episode, normalized) for episode in episodes
+    )
     native_events = tuple(
         event
-        for episode in episodes
+        for episode in hydrated_episodes
         for event in native_projector.project(episode)
     )
     results = tuple(
