@@ -52,7 +52,7 @@ sources:
     - l9-ci-core
     - l9-ci-debt-lsp
     - l9-ci-debt-resolver
-    - PR_Repair
+    - l9-pr-repair
   required_identity:
     - event_id
     - producer_id

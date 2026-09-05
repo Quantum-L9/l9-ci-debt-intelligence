@@ -45,7 +45,7 @@ dependency_direction:
   event_inputs:
     - l9-ci-core -> l9-ci-debt-intelligence
     - l9-ci-debt-resolver -> l9-ci-debt-intelligence
-    - PR_Repair -> l9-ci-debt-intelligence
+    - l9-pr-repair -> l9-ci-debt-intelligence
     - l9-ci-debt-lsp -> l9-ci-debt-intelligence
   prohibited:
     - l9-ci-debt-intelligence -> producer runtime internals

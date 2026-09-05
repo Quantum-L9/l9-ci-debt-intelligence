@@ -20,7 +20,7 @@ dependency_direction:
   event_inputs:
     - l9-ci-core -> l9-ci-debt-intelligence
     - l9-ci-debt-resolver -> l9-ci-debt-intelligence
-    - PR_Repair -> l9-ci-debt-intelligence
+    - l9-pr-repair -> l9-ci-debt-intelligence
     - l9-ci-debt-lsp -> l9-ci-debt-intelligence
   prohibited:
     - l9-ci-debt-intelligence -> producer runtime internals
@@ -80,7 +80,7 @@ historical_mining:
     - harness_replay
     - AST_change_classification
     - cross_repository_clustering
-    - PR_Repair_learning_packets
+    - l9-pr-repair_learning_packets
     - automated_strategy_ranking
     - historical_rule_compilation
     - fleet_scale
