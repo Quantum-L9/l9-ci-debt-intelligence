@@ -20,7 +20,16 @@ def create_projection(
     database_path.parent.mkdir(parents=True, exist_ok=True)
     connection = duckdb.connect(str(database_path))
     try:
+        # The glob has to be embedded as a literal rather than bound as a
+        # parameter. This VIEW is persisted into database_path and read back by
+        # later connections; DuckDB stores `getvariable('...')` unresolved, so a
+        # SET VARIABLE / getvariable() form creates a view that works on this
+        # connection and then fails on reopen with "read_parquet cannot take
+        # NULL list as parameter". Doubling `'` is the complete escape for a
+        # DuckDB single-quoted string literal (there is no backslash escape to
+        # break out through), so the path cannot terminate the literal.
         parquet_literal = parquet_glob.as_posix().replace("'", "''")
+        # nosemgrep: l9.baseline.python.sql-string-format
         connection.execute(
             f"""
             CREATE OR REPLACE VIEW corpus_records AS
