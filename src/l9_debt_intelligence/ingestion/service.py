@@ -14,6 +14,7 @@ from .identity import (
     quarantine_id,
     record_id,
 )
+from .learning import LearningProjector
 from .models import IngestionResult
 from .normalization import (
     NormalizationError,
@@ -57,6 +58,7 @@ class IngestionService:
             compatibility_registry=compatibility_registry,
         )
         self.store = FilesystemCorpusStore(storage_root)
+        self.learning = LearningProjector()
         self.clock = clock
 
     def ingest(self, event: dict[str, Any]) -> IngestionResult:
@@ -145,6 +147,15 @@ class IngestionService:
             }
             self.store.write_record(record)
             status = "accepted"
+        # Derived here rather than later because the store keeps only a content
+        # hash: once ingestion returns, the payload these observations describe
+        # is gone. Derived for a duplicate too, so a store written before this
+        # projection existed gains its learning view on redelivery instead of
+        # staying permanently invisible to Phase 3.
+        learning_limitations = self._project_learning(
+            normalized,
+            record_id=corpus_record_id,
+        )
         observation = observation_id(
             event_hash=event_hash,
             observed_at=observed_at,
@@ -175,8 +186,34 @@ class IngestionService:
             quarantine_id=None,
             observation_id=observation,
             ledger_sequence=sequence,
-            limitations=tuple(normalized.get("limitations", [])),
+            limitations=tuple(normalized.get("limitations", [])) + learning_limitations,
         )
+
+    def _project_learning(
+        self,
+        event: dict[str, Any],
+        *,
+        record_id: str,
+    ) -> tuple[str, ...]:
+        """Derive and store this record's learning observations.
+
+        A projection failure does not reject an already-admitted record: the
+        delivery was valid under its producer contract, and the corpus is the
+        append-only fact. It surfaces as a limitation, so the record is visibly
+        present with no learning view rather than silently contributing nothing
+        -- which is what the whole of Phase 3 looked like before this existed.
+        """
+        try:
+            observations, limitations = self.learning.project(
+                event,
+                record_id=record_id,
+            )
+        except (ContractError, ValueError) as error:
+            return (f"learning projection unavailable: {error}",)
+        stored = self.store.read_observations(record_id)
+        if stored is None:
+            self.store.write_observations(record_id, list(observations))
+        return limitations
 
     def _quarantine(
         self,

@@ -1,13 +1,48 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from l9_debt_intelligence.contracts.canonical import sha256_document
+from l9_debt_intelligence.contracts.learning_columns import (
+    LearningColumnError,
+    coerce_row,
+    sort_key,
+)
 from l9_debt_intelligence.ingestion.verify import verify_store
 
 from .errors import SnapshotSourceError
 from .models import SnapshotRecord
+
+
+def _load_rows(
+    rows_root: Path,
+    record_id: str,
+) -> tuple[Mapping[str, Any], ...]:
+    """The stored rows this record contributes, reduced to the column contract.
+
+    Absent is not an error: a record written before the projection that derives
+    these has none, and still contributes exactly one row. The column contract
+    lives in `contracts.learning_columns` precisely so this phase can carry the
+    values without naming what they mean.
+    """
+    path = rows_root / f"{record_id}.json"
+    if not path.is_file():
+        return ()
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(document, list):
+        raise SnapshotSourceError(f"stored rows are not an array: {path}")
+    rows: list[Mapping[str, Any]] = []
+    for item in document:
+        if not isinstance(item, dict):
+            raise SnapshotSourceError(f"stored row is not an object: {path}")
+        try:
+            rows.append(coerce_row(item))
+        except LearningColumnError as error:
+            raise SnapshotSourceError(f"{error}: {path}") from error
+    return tuple(sorted(rows, key=sort_key))
 
 
 def load_verified_records(storage_root: Path) -> tuple[SnapshotRecord, ...]:
@@ -15,6 +50,7 @@ def load_verified_records(storage_root: Path) -> tuple[SnapshotRecord, ...]:
     if verification.get("status") != "valid":
         raise SnapshotSourceError("ingestion store verification did not return valid")
     records_root = storage_root / "records"
+    rows_root = storage_root / "observations"
     records: list[SnapshotRecord] = []
     for path in sorted(records_root.glob("cr_*.json")):
         document = json.loads(path.read_text(encoding="utf-8"))
@@ -55,6 +91,7 @@ def load_verified_records(storage_root: Path) -> tuple[SnapshotRecord, ...]:
                     else None
                 ),
                 source_record_hash=sha256_document(document),
+                observations=_load_rows(rows_root, str(record_id)),
             )
         )
     return tuple(sorted(records, key=lambda value: value.record_id))

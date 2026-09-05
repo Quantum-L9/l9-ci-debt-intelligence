@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,13 @@ class SnapshotRecord:
     limitations_json: str
     superseded_by: str | None
     source_record_hash: str
+    #: Rows this record contributes, each already reduced to the column
+    #: contract in `contracts.learning_columns` and carried opaquely: this phase
+    #: writes them and does not interpret them. One record yields one row per
+    #: entry, with its own provenance columns repeated across them. Empty only
+    #: when the record predates the projection that derives them, in which case
+    #: the record still contributes exactly one row.
+    observations: tuple[Mapping[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)

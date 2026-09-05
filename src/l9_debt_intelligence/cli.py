@@ -325,6 +325,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         required=True,
     )
+    # Every other subcommand declares this, and `main` reads `arguments.output`
+    # unconditionally for all of them. Omitting it here made the command raise
+    # AttributeError after the keypair had already been written to disk --
+    # AttributeError is not in the caught tuple, so it escaped as a non-zero
+    # exit while a private key sat on disk.
+    keygen.add_argument("--output", type=Path)
     assemble = commands.add_parser(
         "assemble-defense-pack",
         help="Assemble an immutable defense pack.",
