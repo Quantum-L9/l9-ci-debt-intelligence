@@ -90,8 +90,13 @@ def assess_attribution(
             False,
         )
 
+    empty_change = any(
+        int(change.data.get("file_count") or 0) == 0
+        and change.data.get("change_fingerprint") is not None
+        for change in changes
+    )
     if "intervention_evidence_missing" in confounders or (
-        not same_revision and not changes
+        not same_revision and (not changes or empty_change)
     ):
         return AttributionAssessment(
             "U",

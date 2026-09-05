@@ -7,7 +7,7 @@ from typing import Any
 
 from l9_debt_intelligence.contracts.canonical import sha256_document
 
-from .attribution import assess_attribution
+from .attribution import AttributionAssessment, assess_attribution
 from .contracts import (
     RECONSTRUCTION_ALGORITHM_VERSION,
     RECONSTRUCTION_CONTRACT_VERSION,
@@ -244,6 +244,25 @@ def reconstruct_episodes(
             extra_confounders=tuple(sorted(extra_confounders)),
         )
         flake = classify_flakiness(failure_run=before, runs=tuple(runs))
+        if not flake.repair_credit_allowed and assessment.outcome == "clean_verified":
+            assessment = AttributionAssessment(
+                "U",
+                "unresolved",
+                tuple(
+                    sorted(set(assessment.confounders + ("verified_flaky_failure",)))
+                ),
+                min(assessment.evidence_completeness, 50),
+                tuple(
+                    sorted(
+                        set(
+                            assessment.limitations
+                            + ("verified flaky failure cannot receive repair credit",)
+                        )
+                    )
+                ),
+                "outcome_unknown",
+                True,
+            )
         source_refs = sorted(
             {
                 ref

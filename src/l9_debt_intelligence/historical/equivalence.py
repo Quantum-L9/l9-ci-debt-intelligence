@@ -47,8 +47,8 @@ def evaluate_validation_equivalence(
     reasons.extend(sorted(set(weakening)))
 
     if after_job is not None:
-        before_steps = _step_names(before_job.data.get("steps"))
-        after_steps = _step_names(after_job.data.get("steps"))
+        before_steps = _step_identities(before_job.data.get("steps"))
+        after_steps = _step_identities(after_job.data.get("steps"))
         if before_steps and after_steps and before_steps != after_steps:
             reasons.append("validation_contract_changed")
         elif not before_steps or not after_steps:
@@ -67,7 +67,7 @@ def evaluate_validation_equivalence(
     )
 
 
-def _step_names(value: Any) -> tuple[str, ...]:
+def _step_identities(value: Any) -> tuple[str, ...]:
     if not isinstance(value, list):
         return ()
     output: list[str] = []
@@ -75,6 +75,16 @@ def _step_names(value: Any) -> tuple[str, ...]:
         if not isinstance(item, dict):
             continue
         name = item.get("name")
-        if isinstance(name, str) and name:
-            output.append(name)
+        if not isinstance(name, str) or not name:
+            continue
+        conclusion = item.get("conclusion")
+        status = item.get("status")
+        result = (
+            conclusion
+            if isinstance(conclusion, str) and conclusion
+            else status
+            if isinstance(status, str) and status
+            else "unknown"
+        )
+        output.append(f"{name}:{result}")
     return tuple(output)

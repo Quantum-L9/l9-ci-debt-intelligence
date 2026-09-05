@@ -72,14 +72,14 @@ def run_bootstrap(
         include_logs=include_logs,
     )
     safety = screen_observations(harvest.observations)
+    store = HistoricalDerivedStore(state_root / "derived")
+    for quarantined_item in safety.quarantined:
+        store.write_quarantine(quarantined_item)
     normalized = normalize_observations(safety.safe)
     episodes = reconstruct_episodes(
         normalized,
         closed_loop_lineage=closed_loop_lineage,
     )
-    store = HistoricalDerivedStore(state_root / "derived")
-    for quarantined_item in safety.quarantined:
-        store.write_quarantine(quarantined_item)
     for normalized_item in normalized:
         store.write_normalized(normalized_item)
     for episode_item in episodes:

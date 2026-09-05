@@ -23,7 +23,8 @@ class HttpResponse:
 class HttpTransport(Protocol):
     def request(
         self, *, method: str, url: str, headers: dict[str, str]
-    ) -> HttpResponse: ...
+    ) -> HttpResponse:
+        pass
 
 
 class UrlLibTransport:

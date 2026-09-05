@@ -105,7 +105,9 @@ def normalize_observation(
         assert payload is not None
         revision = _string(payload.get("sha"))
         parents = _parents(payload.get("parents"))
-        files = _files(payload.get("files"))
+        raw_files = payload.get("files")
+        files_unobserved = raw_files is None
+        files = _files(raw_files)
         committed_at = _committed_at(payload)
         commit = _build(
             observation,
@@ -140,7 +142,10 @@ def normalize_observation(
                 "dependency_lockfile_change": any(
                     _is_lock(str(item["path"])) for item in files
                 ),
-                "validation_weakening_signals": _weakening(files),
+                "validation_weakening_signals": (
+                    _weakening(files)
+                    + (["files_unobserved"] if files_unobserved else [])
+                ),
                 "is_merge": len(parents) > 1,
                 "changed_paths": [str(item["path"]) for item in files],
             },

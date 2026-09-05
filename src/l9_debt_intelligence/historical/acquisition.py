@@ -19,7 +19,8 @@ class HistoricalProvider(Protocol):
         repository: str,
         pr_number: int,
         include_logs: bool = True,
-    ) -> tuple[AcquisitionObservation, ...]: ...
+    ) -> tuple[AcquisitionObservation, ...]:
+        pass
 
 
 @dataclass(frozen=True)
