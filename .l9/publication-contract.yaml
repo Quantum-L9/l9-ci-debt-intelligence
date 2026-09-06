@@ -89,10 +89,22 @@ signature:
   signed_value: archive_sha256
   private_key_storage: external_secret_only
   public_key_distribution: publication_manifest
+  signer_key_id:
+    field: signer_key_id
+    pattern: "^key_[0-9a-f]{64}$"
+    derivation: 'namespaced SHA-256 over {"raw_public_key": <hex>} with the "key_" prefix'
+    derived_from: the distributed public key of the key that signed archive_sha256
+    consumer_use: >-
+      l9-ci-debt-lsp resolves its trusted verification key by this id
+      (pack-protocol-contract verification_order step validate_trusted_signer)
+      and rejects a trusted key whose recomputed id does not match. The
+      derivation is consumer-defined; this producer mirrors it and must not
+      diverge from it.
   prohibited:
     - private key in repository
     - private key in defense pack
     - unsigned stable publication
+    - signer key id carried independently of the key it names
 publication_gates:
   - schema_valid
   - deterministic_build

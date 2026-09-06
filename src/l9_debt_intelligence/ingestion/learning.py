@@ -59,6 +59,7 @@ DEFAULT_SCHEMA = (
 
 SDK_CONTRACT = "l9.finding-bundle/v1"
 RESOLVER_CONTRACT = "l9.intelligence-feedback-event/v1"
+HISTORICAL_CONTRACT = "l9.historical-resolution-event/v1"
 
 #: Namespaces the recurrence key so two producers cannot collide on a shared
 #: token, and so the derivation can be versioned without silently re-keying an
@@ -69,6 +70,19 @@ _FAILURE_NAMESPACE = "l9.recurrence/v1:failure-fingerprint"
 _RECORD_NAMESPACE = "l9.recurrence/v1:record"
 
 _VALIDATION_OUTCOMES = frozenset({"passed", "failed", "partial", "unknown"})
+
+#: Reconstructed episode outcomes, mapped onto the learning vocabulary.
+#: `clean_verified` and `target_failure_resolved` are the two the miner emits
+#: for a validated repair; everything else is an explicit non-success, and
+#: anything absent from this table becomes `unknown` rather than a guess.
+_HISTORICAL_OUTCOMES: Mapping[str, str] = {
+    "clean_verified": "passed",
+    "target_failure_resolved": "passed",
+    "repeated_failure": "failed",
+    "new_failure": "failed",
+    "outcome_unknown": "unknown",
+    "unresolved": "unknown",
+}
 
 
 class LearningProjectionError(ContractError):
@@ -276,6 +290,160 @@ def _resolver_feedback_observations(
     )
 
 
+def _historical_resolution_observations(
+    event: Mapping[str, Any],
+    *,
+    record_id: str,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """One mined episode observation, keyed on the failure it reconstructs.
+
+    Without this branch the historical miner's whole output fell to
+    `_generic_observations`: a record-local fingerprint that can never
+    aggregate, and `validation_outcome`, `remediation_class` and
+    `false_positive_disposition` all left `None`. Those three carry 0.50 of the
+    candidate score between them, so mined repair history -- the only source of
+    repair evidence the constellation has -- could not reach scoring at all,
+    and no candidate could pass the 4.0 promotion threshold however much
+    history was ingested.
+
+    The miner emits three events per episode (`CI_failure_classification`,
+    `repair_attempt`, `verification_outcome`) that share one
+    `semantic_failure_identity`. Keying recurrence on that identity is what
+    makes the three collapse into one recurrence group rather than three
+    unrelated singletons, and what lets the verification event's outcome attach
+    to the same group the failure event opened.
+
+    `repository_identity` is used as the scope verbatim: the producer already
+    pseudonymised it with an HMAC before the event left the historical
+    boundary, so re-deriving a scope here would either double-pseudonymise a
+    value that is already safe or, worse, reach for a raw identity that is not
+    present.
+    """
+    payload = event.get("payload")
+    if not isinstance(payload, Mapping):
+        raise LearningProjectionError("historical event has no payload object")
+
+    limitations: list[str] = []
+
+    # Already a pseudonym from `HistoricalEventProjector`; not re-derived.
+    scope = _text(payload.get("repository_identity"))
+    if scope is None:
+        # Same record-local form `_scope` uses, spelled here rather than
+        # imported from `analytics`: ingestion must not depend on a later phase.
+        scope = f"record:{record_id}"
+        limitations.append(
+            "historical event carried no repository identity; occurrence scope "
+            "is record-local and cannot co-occur"
+        )
+
+    failure = payload.get("failure")
+    failure_identity = (
+        _text(failure.get("semantic_failure_identity"))
+        if isinstance(failure, Mapping)
+        else None
+    )
+    if failure_identity is not None:
+        fingerprint = _digest(_FAILURE_NAMESPACE, failure_identity)
+    else:
+        fingerprint = _digest(_RECORD_NAMESPACE, record_id)
+        limitations.append(
+            "historical event carried no semantic failure identity; recurrence "
+            "is record-local"
+        )
+
+    # The miner states plainly when the identity it reconstructed is not a
+    # canonical rule, via an `unknowns` entry. Honour that rather than passing
+    # a reconstructed identity off as a canonical rule id.
+    canonical_rule_id = None
+    if isinstance(failure, Mapping):
+        authority = _text(failure.get("identity_authority"))
+        if authority == "canonical" and failure_identity is not None:
+            canonical_rule_id = failure_identity
+        elif authority is not None and authority != "canonical":
+            limitations.append(
+                f"historical failure identity authority is {authority!r}; "
+                "canonical_rule_id is unknown"
+            )
+
+    intervention = payload.get("intervention")
+    remediation_class = (
+        _text(intervention.get("remediation_class"))
+        if isinstance(intervention, Mapping)
+        else None
+    )
+
+    validation = payload.get("validation")
+    validation_outcome = None
+    if isinstance(validation, Mapping):
+        outcome = _text(validation.get("outcome"))
+        if outcome is not None:
+            validation_outcome = _HISTORICAL_OUTCOMES.get(outcome)
+            if validation_outcome is None:
+                limitations.append(
+                    f"historical outcome {outcome!r} is not a learning-observation "
+                    "outcome; recorded as unknown"
+                )
+                validation_outcome = "unknown"
+
+    # Disposition follows the evidence rather than being left unknown.
+    #
+    # A suspected flake is the miner's own false-positive signal: the failure
+    # was observed but attributing a repair to it is unsafe. `attribution.py`
+    # and `reconstruction.py` already refuse repair credit in that case, so
+    # `inconclusive` keeps the corpus consistent with the grade rather than
+    # letting a flaky failure look like a confirmed true positive.
+    #
+    # A validated repair of a failure that is *not* a suspected flake is the
+    # opposite, and saying nothing about it is not neutral: `effectiveness_rows`
+    # computes `false_positive_ratio` from confirmed dispositions only, so an
+    # all-`None` corpus yields a ratio of `None`, which scores
+    # `false_positive_safety` as 0.0 -- indistinguishable from a rule whose
+    # findings were all false positives. An episode whose failure was real
+    # enough to reproduce and whose repair was validated as equivalent is a
+    # confirmed true positive on exactly the evidence the miner reconstructed.
+    false_positive_disposition = None
+    evidence = payload.get("historical_evidence")
+    suspected_flake = (
+        evidence.get("suspected_flake") is True
+        if isinstance(evidence, Mapping)
+        else False
+    )
+    if suspected_flake:
+        false_positive_disposition = "inconclusive"
+        limitations.append(
+            "historical episode is a suspected flake; disposition is inconclusive "
+            "and repair credit was withheld upstream"
+        )
+    elif validation_outcome == "passed":
+        false_positive_disposition = "confirmed_true_positive"
+
+    # Reconstructed history carries provider timestamps, not measured repair
+    # effort. Deriving minutes from wall-clock between runs would attribute
+    # queue time and unrelated work to the repair.
+    limitations.append(
+        "historical evidence is reconstructed; effort_minutes is unknown"
+    )
+
+    return (
+        [
+            _observation(
+                record_id=record_id,
+                producer_id=str(event["producer_id"]),
+                event_class=str(event["event_class"]),
+                producer_contract=HISTORICAL_CONTRACT,
+                occurrence_scope=scope,
+                recurrence_fingerprint=fingerprint,
+                canonical_rule_id=canonical_rule_id,
+                repository_identity=scope,
+                remediation_class=remediation_class,
+                validation_outcome=validation_outcome,
+                false_positive_disposition=false_positive_disposition,
+            )
+        ],
+        limitations,
+    )
+
+
 def _generic_observations(
     event: Mapping[str, Any],
     *,
@@ -335,6 +503,10 @@ class LearningProjector:
             )
         elif contract == RESOLVER_CONTRACT:
             observations, limitations = _resolver_feedback_observations(
+                event, record_id=record_id
+            )
+        elif contract == HISTORICAL_CONTRACT:
+            observations, limitations = _historical_resolution_observations(
                 event, record_id=record_id
             )
         else:
