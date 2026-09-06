@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9://intelligence/defense-checksums/v1",
+  "title": "Defense-pack member checksum document",
+  "description": "The `checksums.json` member of an l9.debt-defense/v1 archive. Distinct from the `checksums` field inside `defense-pack.json`, which is a bare path->digest mapping with no envelope. Emitting the token in code without publishing this schema is what let a consumer read the wrong one of those two shapes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "files"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "l9.defense-checksums/v1"
+    },
+    "files": {
+      "type": "object",
+      "description": "Archive-relative member path to its SHA-256, lowercase hex. Ordered lexicographically by the deterministic assembler; consumers must not depend on iteration order.",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    }
+  }
+}

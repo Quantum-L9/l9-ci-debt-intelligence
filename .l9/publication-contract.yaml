@@ -83,6 +83,25 @@ archive:
     - rules
     - compatibility.json
     - checksums.json
+  checksums_document:
+    member: checksums.json
+    protocol: l9.defense-checksums/v1
+    schema: schemas/intelligence/defense-checksums.schema.json
+    shape:
+      schema_version: l9.defense-checksums/v1
+      files: archive-relative member path -> lowercase SHA-256 hex
+    owner: intelligence
+    distinct_from: >-
+      the `checksums` field inside defense-pack.json, which is a bare
+      path -> digest mapping with no envelope and no schema_version. The two
+      are different documents with different shapes; a consumer that reads
+      checksums.json with a loader written for the pack's inline field sees
+      `files` where it expects a digest.
+    consumer_use: >-
+      l9-ci-debt-lsp validates this member at verification_order step
+      validate_checksums_document and then verifies each named member against
+      it at verify_member_checksums. The envelope is required: a bare mapping
+      carries no version and cannot be distinguished from a future format.
 signature:
   algorithm: Ed25519
   encoding: base64
