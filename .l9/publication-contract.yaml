@@ -91,6 +91,15 @@ archive:
       schema_version: l9.defense-checksums/v1
       files: archive-relative member path -> lowercase SHA-256 hex
     owner: intelligence
+    coverage: >-
+      `files` carries at least one entry; the schema refuses an empty mapping.
+      A consumer verifies the entries it is given, so an empty document is a
+      vacuous pass -- integrity reported after nothing was checked. The
+      producer's stronger invariant, that the entries cover every
+      content-carrying archive member except checksums.json itself, is
+      asserted against a real assembled archive in
+      tests/publication/test_checksums_document.py; it is not expressible in
+      the document schema, which sees no archive.
     distinct_from: >-
       the `checksums` field inside defense-pack.json, which is a bare
       path -> digest mapping with no envelope and no schema_version. The two

@@ -190,13 +190,37 @@ class SchemaRefusesMalformedDocuments(unittest.TestCase):
         self._refuses({"checksums": {"defense-pack.json": "a" * 64}})
 
     def test_a_wrong_schema_version_is_refused(self) -> None:
-        self._refuses({"schema_version": "l9.defense-checksums/v2", "files": {}})
+        # `files` is populated so the version constant is the only rule this
+        # document breaks. With an empty mapping the document would also fail
+        # `minProperties`, and the test would keep passing with the `const`
+        # deleted -- pinning nothing.
+        self._refuses(
+            {
+                "schema_version": "l9.defense-checksums/v2",
+                "files": {"defense-pack.json": "a" * 64},
+            }
+        )
 
     def test_a_missing_schema_version_is_refused(self) -> None:
         self._refuses({"files": {"defense-pack.json": "a" * 64}})
 
     def test_a_non_object_files_value_is_refused(self) -> None:
         self._refuses({"schema_version": "l9.defense-checksums/v1", "files": []})
+
+    def test_an_empty_files_mapping_is_refused(self) -> None:
+        """A well-formed envelope covering nothing. The vacuous pass, refused.
+
+        Every other constraint here is satisfied: the version is exact, there
+        are no unknown fields, and `files` is an object of the right type. Only
+        the coverage requirement rejects it -- which is the point, because this
+        is the shape that reaches a consumer looking valid. `verify` loops over
+        the entries it is handed, so zero entries verify zero members and the
+        integrity step reports success having proven nothing.
+
+        The old fixtures wrote exactly this document, which is why the shape
+        divergence with `l9-ci-debt-lsp` survived to reach real packs.
+        """
+        self._refuses({"schema_version": "l9.defense-checksums/v1", "files": {}})
 
     def test_a_non_hex_digest_is_refused(self) -> None:
         self._refuses(
@@ -234,10 +258,12 @@ class SchemaRefusesMalformedDocuments(unittest.TestCase):
                 )
 
     def test_an_unknown_top_level_field_is_refused(self) -> None:
+        # Populated for the same reason as the wrong-version case: the unknown
+        # field must be the sole cause of refusal.
         self._refuses(
             {
                 "schema_version": "l9.defense-checksums/v1",
-                "files": {},
+                "files": {"defense-pack.json": "a" * 64},
                 "extra": True,
             }
         )

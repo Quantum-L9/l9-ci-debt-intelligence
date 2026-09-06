@@ -15,7 +15,8 @@
     },
     "files": {
       "type": "object",
-      "description": "Archive-relative member path to its SHA-256, lowercase hex. Ordered lexicographically by the deterministic assembler; consumers must not depend on iteration order.",
+      "description": "Archive-relative member path to its SHA-256, lowercase hex. Ordered lexicographically by the deterministic assembler; consumers must not depend on iteration order. At least one entry is required: a consumer that verifies every checksum it is given reports success after verifying nothing when given none, so an empty mapping is a vacuous pass rather than an integrity proof. This constrains the document alone -- that the entries cover every content-carrying member is the producer's invariant, asserted against the real archive in tests/publication/test_checksums_document.py.",
+      "minProperties": 1,
       "propertyNames": {
         "type": "string",
         "minLength": 1,
