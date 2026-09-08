@@ -47,11 +47,16 @@ def evaluate_validation_equivalence(
     reasons.extend(sorted(set(weakening)))
 
     if after_job is not None:
-        before_steps = _step_identities(before_job.data.get("steps"))
-        after_steps = _step_identities(after_job.data.get("steps"))
-        if before_steps and after_steps and before_steps != after_steps:
+        before_names = _step_names(before_job.data.get("steps"))
+        after_names = _step_names(after_job.data.get("steps"))
+        if before_names and after_names and before_names != after_names:
             reasons.append("validation_contract_changed")
-        elif not before_steps or not after_steps:
+        elif _ran_step_became_skipped(
+            before_job.data.get("steps"),
+            after_job.data.get("steps"),
+        ):
+            reasons.append("validation_contract_changed")
+        elif not before_names or not after_names:
             completeness -= 15
 
     if reasons:
@@ -67,7 +72,7 @@ def evaluate_validation_equivalence(
     )
 
 
-def _step_identities(value: Any) -> tuple[str, ...]:
+def _step_names(value: Any) -> tuple[str, ...]:
     if not isinstance(value, list):
         return ()
     output: list[str] = []
@@ -75,16 +80,43 @@ def _step_identities(value: Any) -> tuple[str, ...]:
         if not isinstance(item, dict):
             continue
         name = item.get("name")
-        if not isinstance(name, str) or not name:
-            continue
-        conclusion = item.get("conclusion")
-        status = item.get("status")
-        result = (
-            conclusion
-            if isinstance(conclusion, str) and conclusion
-            else status
-            if isinstance(status, str) and status
-            else "unknown"
-        )
-        output.append(f"{name}:{result}")
+        if isinstance(name, str) and name:
+            output.append(name)
     return tuple(output)
+
+
+def _step_conclusion(item: dict[str, Any]) -> str:
+    conclusion = item.get("conclusion")
+    if isinstance(conclusion, str) and conclusion:
+        return conclusion
+    status = item.get("status")
+    if isinstance(status, str) and status:
+        return status
+    return "unknown"
+
+
+def _ran_step_became_skipped(before: Any, after: Any) -> bool:
+    """A previously executed step that is later skipped is a real contract change.
+
+    Fail→pass conclusions and GitHub cascade-skips after a failed sibling are not.
+    """
+    before_map = _named_conclusions(before)
+    after_map = _named_conclusions(after)
+    ran = {"success", "failure", "cancelled", "timed_out"}
+    return any(
+        after_map.get(name) == "skipped" and before_map.get(name) in ran
+        for name in after_map
+    )
+
+
+def _named_conclusions(value: Any) -> dict[str, str]:
+    if not isinstance(value, list):
+        return {}
+    output: dict[str, str] = {}
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if isinstance(name, str) and name:
+            output[name] = _step_conclusion(item)
+    return output
