@@ -51,6 +51,82 @@ def test_skipped_step_is_not_equivalent() -> None:
     assert "validation_contract_changed" in result.reasons
 
 
+def test_fail_to_pass_same_step_names_is_equivalent() -> None:
+    before_job = _obs(
+        "ci_job",
+        {
+            "name": "test",
+            "steps": [
+                {"name": "pytest", "conclusion": "failure", "status": "completed"}
+            ],
+        },
+        "bj",
+    )
+    after_job = _obs(
+        "ci_job",
+        {
+            "name": "test",
+            "steps": [
+                {"name": "pytest", "conclusion": "success", "status": "completed"}
+            ],
+        },
+        "aj",
+    )
+    run = _obs("ci_execution", {"workflow_identity": "ci"}, "r")
+    result = evaluate_validation_equivalence(
+        before_run=run,
+        after_run=run,
+        before_job=before_job,
+        after_job=after_job,
+        changes=(),
+    )
+    assert result.status == "equivalent"
+    assert result.reasons == ()
+
+
+def test_cascade_skip_after_failure_is_equivalent() -> None:
+    before_job = _obs(
+        "ci_job",
+        {
+            "name": "test",
+            "steps": [
+                {"name": "pytest", "conclusion": "failure", "status": "completed"},
+                {
+                    "name": "Post Install Python",
+                    "conclusion": "skipped",
+                    "status": "completed",
+                },
+            ],
+        },
+        "bj",
+    )
+    after_job = _obs(
+        "ci_job",
+        {
+            "name": "test",
+            "steps": [
+                {"name": "pytest", "conclusion": "success", "status": "completed"},
+                {
+                    "name": "Post Install Python",
+                    "conclusion": "success",
+                    "status": "completed",
+                },
+            ],
+        },
+        "aj",
+    )
+    run = _obs("ci_execution", {"workflow_identity": "ci"}, "r")
+    result = evaluate_validation_equivalence(
+        before_run=run,
+        after_run=run,
+        before_job=before_job,
+        after_job=after_job,
+        changes=(),
+    )
+    assert result.status == "equivalent"
+    assert result.reasons == ()
+
+
 def test_empty_file_count_denies_repair_credit() -> None:
     run = _obs(
         "ci_execution", {"workflow_identity": "ci", "conclusion": "success"}, "r"

@@ -18,3 +18,10 @@ interventions or material confounders cap attribution at C; missing or
 non-equivalent evidence remains U. New failures, repeated failures, validation
 weakening, and ineffective interventions are retained rather than laundered
 into success.
+
+## Amendment (2026-09-08)
+
+The validation contract is the ordered step names plus whether a previously
+executed step became skipped. Fail→pass conclusions and GitHub cascade-skips
+of later steps after a failed sibling are not contract changes. Intentionally
+skipping a gate that previously ran remains non-equivalent.

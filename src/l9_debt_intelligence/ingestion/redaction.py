@@ -67,6 +67,7 @@ def inspect_value(
     value: Any,
     *,
     path: tuple[str, ...] = (),
+    detect_git_object_ids: bool = True,
 ) -> list[str]:
     findings: list[str] = []
     if isinstance(value, dict):
@@ -78,6 +79,7 @@ def inspect_value(
                 inspect_value(
                     child,
                     path=path + (key_text,),
+                    detect_git_object_ids=detect_git_object_ids,
                 )
             )
     elif isinstance(value, list):
@@ -86,6 +88,7 @@ def inspect_value(
                 inspect_value(
                     child,
                     path=path + (str(index),),
+                    detect_git_object_ids=detect_git_object_ids,
                 )
             )
     elif isinstance(value, str):
@@ -95,7 +98,7 @@ def inspect_value(
                 break
         if ABSOLUTE_PATH.search(value):
             findings.append(f"absolute-path:{'.'.join(path)}")
-        if GIT_OBJECT_ID.search(value):
+        if detect_git_object_ids and GIT_OBJECT_ID.search(value):
             findings.append(f"git-object-id:{'.'.join(path)}")
     return findings
 

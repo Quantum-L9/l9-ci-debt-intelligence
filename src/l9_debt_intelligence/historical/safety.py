@@ -33,7 +33,22 @@ class SafetyScreenResult:
 def screen_observation(
     observation: AcquisitionObservation,
 ) -> AcquisitionObservation | QuarantinedObservation:
-    findings = tuple(sorted(set(inspect_value(observation.payload))))
+    # Acquisition observations are provider material. GitHub's native identity
+    # *is* a 40-character object id (head SHA, commit SHA, merge SHA). The
+    # corpus git-object-id rule stays on after `_digest_revision` projects an
+    # episode into INTEL-P1. Applying that rule here quarantines every real
+    # harvest (59/59 on Core #148) and reconstruction never sees a pull
+    # request. Tokens, private keys, and absolute paths still fail closed.
+    findings = tuple(
+        sorted(
+            set(
+                inspect_value(
+                    observation.payload,
+                    detect_git_object_ids=False,
+                )
+            )
+        )
+    )
     if findings:
         return QuarantinedObservation(
             observation_id=observation.observation_id,
