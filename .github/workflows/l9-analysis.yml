@@ -164,7 +164,7 @@ jobs:
 
       - name: Build artifact manifest
         if: steps.gov.outputs.enabled == 'true'
-        uses: Quantum-L9/l9-ci-core/.github/actions/build-artifact-manifest@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/build-artifact-manifest@75c74f1693535897ecc7cba20815921256f6fac6
         with:
           provider: semgrep
           matrix-id: ${{ env.L9_MATRIX_ID }}
