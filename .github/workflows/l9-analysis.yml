@@ -85,7 +85,6 @@ jobs:
           event-name: ${{ github.event_name }}
           repository: ${{ github.repository }}
           ref: ${{ github.ref }}
-          governance-root: .github/governance
 
       - id: names
         name: Resolve artifact name
@@ -182,10 +181,14 @@ jobs:
         with:
           provider: semgrep
           matrix-id: ${{ env.L9_MATRIX_ID }}
+          artifact-name: ${{ steps.names.outputs.artifact-name }}
+          repository: ${{ github.repository }}
+          repository-revision: ${{ github.sha }}
           sdk-revision: ${{ steps.sdk.outputs.sdk-revision }}
           bundle: ${{ steps.route.outputs.bundle }}
           agent-payload: ${{ steps.route.outputs.agent-payload }}
           raw-directory: ${{ steps.route.outputs.raw-directory }}
+          routing-record: ${{ steps.route.outputs.routing-record }}
           output: artifacts/metadata/${{ env.L9_MATRIX_ID }}/artifact-manifest.json
 
       - name: Upload analysis artifact set
