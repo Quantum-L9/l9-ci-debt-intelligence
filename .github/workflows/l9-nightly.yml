@@ -16,6 +16,8 @@ permissions:
   actions: read
   checks: write
   contents: read
+  # nightly.yml declares packages: read; the caller must grant it.
+  packages: read
 
 jobs:
   l9_nightly:
@@ -24,6 +26,7 @@ jobs:
       actions: read
       checks: write
       contents: read
+      packages: read
     secrets: inherit
     with:
       python-version: "3.12"

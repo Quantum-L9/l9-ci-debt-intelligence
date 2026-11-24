@@ -1,5 +1,6 @@
 name: PROBE analysis call
 on:
+  push:
   workflow_dispatch:
 permissions:
   actions: read
