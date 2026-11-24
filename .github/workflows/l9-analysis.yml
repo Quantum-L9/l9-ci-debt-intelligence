@@ -23,6 +23,13 @@ on:
   workflow_dispatch:
 
 permissions:
+  # GitHub refuses a job-level grant that exceeds the workflow-level
+  # grant, and it refuses it at load time: the run is created with zero
+  # jobs and the conclusion reads startup_failure. The nightly kernel and
+  # Core's publish-analysis both need actions:read and checks:write, so
+  # those scopes must be granted here, not only on the job.
+  actions: read
+  checks: write
   contents: read
 
 concurrency:
