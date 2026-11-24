@@ -17,7 +17,7 @@ on:
       - "L9 Lint and Test"
       - "L9 Lint and Test (Node)"
       - "L9 Analysis"
-      - "L9 Nightly"
+      - "Deep nightly"
       - "Intelligence Phase 1 contracts"
       - "Intelligence Phase 2 ingestion"
       - "Intelligence Phase 3 snapshots"
