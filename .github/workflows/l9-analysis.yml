@@ -78,14 +78,13 @@ jobs:
 
       - id: gov
         name: Resolve governance (Core)
-        uses: Quantum-L9/l9-ci-core/.github/actions/resolve-governance@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/resolve-governance@0894c11c69ea6cd1890c09fc905b76ff6dca206e
         with:
           profile: ${{ env.L9_PROFILE }}
           provider: semgrep
           event-name: ${{ github.event_name }}
           repository: ${{ github.repository }}
           ref: ${{ github.ref }}
-          governance-root: .github/governance
 
       - id: names
         name: Resolve artifact name
@@ -129,11 +128,11 @@ jobs:
       - id: sdk
         name: Provision immutable SDK
         if: steps.gov.outputs.enabled == 'true'
-        uses: Quantum-L9/l9-ci-core/.github/actions/provision-sdk@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/provision-sdk@0894c11c69ea6cd1890c09fc905b76ff6dca206e
 
       - name: Normalize provider report
         if: steps.gov.outputs.enabled == 'true'
-        uses: Quantum-L9/l9-ci-core/.github/actions/invoke-sdk@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/invoke-sdk@0894c11c69ea6cd1890c09fc905b76ff6dca206e
         with:
           executable: ${{ steps.sdk.outputs.executable }}
           operation: semgrep-normalize
@@ -149,14 +148,52 @@ jobs:
 
       - name: Validate canonical bundle
         if: steps.gov.outputs.enabled == 'true'
-        uses: Quantum-L9/l9-ci-core/.github/actions/validate-bundle@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/validate-bundle@0894c11c69ea6cd1890c09fc905b76ff6dca206e
         with:
           executable: ${{ steps.sdk.outputs.executable }}
           bundle: .l9/runtime/${{ env.L9_MATRIX_ID }}/finding-bundle.json
 
+      - id: gate
+        name: Evaluate gate (SDK verdict)
+        if: steps.gov.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          # The SDK is the single gate-decision authority. Its canonical
+          # gate-result artifact is staged with the rest of the evidence so the
+          # index can resolve it; enforcement belongs to the publish job.
+          args=(
+            gate evaluate
+            --bundle ".l9/runtime/${L9_MATRIX_ID}/finding-bundle.json"
+            --output ".l9/runtime/${L9_MATRIX_ID}/gate-result.json"
+          )
+          if [ "${L9_STRICT:-}" = "true" ]; then
+            args+=(--strict-unresolved)
+          else
+            args+=(--no-strict-unresolved)
+          fi
+          exit_code=0
+          "${L9_EXECUTABLE}" "${args[@]}" || exit_code=$?
+          case "${exit_code}" in
+            0) status="pass" ;;
+            1) status="fail" ;;
+            6) status="incomplete" ;;
+            *)
+              echo "gate evaluate failed with unexpected exit ${exit_code}" >&2
+              exit "${exit_code}"
+              ;;
+          esac
+          {
+            echo "gate-status=${status}"
+            echo "gate-exit-code=${exit_code}"
+          } >> "$GITHUB_OUTPUT"
+          echo "SDK gate verdict: ${status} (exit ${exit_code})"
+        env:
+          L9_EXECUTABLE: ${{ steps.sdk.outputs.executable }}
+          L9_STRICT: ${{ steps.gov.outputs.strict }}
+
       - name: Project agent-review payload
         if: steps.gov.outputs.enabled == 'true'
-        uses: Quantum-L9/l9-ci-core/.github/actions/invoke-sdk@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/invoke-sdk@0894c11c69ea6cd1890c09fc905b76ff6dca206e
         with:
           executable: ${{ steps.sdk.outputs.executable }}
           operation: bundle-project-agent-payload
@@ -167,7 +204,7 @@ jobs:
       - id: route
         name: Route artifacts
         if: steps.gov.outputs.enabled == 'true'
-        uses: Quantum-L9/l9-ci-core/.github/actions/route-artifacts@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/route-artifacts@0894c11c69ea6cd1890c09fc905b76ff6dca206e
         with:
           provider: semgrep
           matrix-id: ${{ env.L9_MATRIX_ID }}
@@ -176,17 +213,29 @@ jobs:
           agent-payload: .l9/runtime/${{ env.L9_MATRIX_ID }}/agent-review-payload.json
           destination-root: artifacts
 
+      - name: Stage gate result with canonical artifacts
+        if: steps.gov.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          cp ".l9/runtime/${L9_MATRIX_ID}/gate-result.json" \
+            "artifacts/l9/${L9_MATRIX_ID}/gate-result.json"
+
       - name: Build artifact manifest
         if: steps.gov.outputs.enabled == 'true'
-        uses: Quantum-L9/l9-ci-core/.github/actions/build-artifact-manifest@ef138020013f077bcd14bc2e65a28f32a734400f
+        uses: Quantum-L9/l9-ci-core/.github/actions/build-artifact-manifest@0894c11c69ea6cd1890c09fc905b76ff6dca206e
         with:
           provider: semgrep
           matrix-id: ${{ env.L9_MATRIX_ID }}
+          artifact-name: ${{ steps.names.outputs.artifact-name }}
+          repository: ${{ github.repository }}
+          repository-revision: ${{ github.sha }}
           sdk-revision: ${{ steps.sdk.outputs.sdk-revision }}
           bundle: ${{ steps.route.outputs.bundle }}
           agent-payload: ${{ steps.route.outputs.agent-payload }}
+          artifact-root: artifacts
           raw-directory: ${{ steps.route.outputs.raw-directory }}
-          output: artifacts/metadata/${{ env.L9_MATRIX_ID }}/artifact-manifest.json
+          routing-record: ${{ steps.route.outputs.routing-record }}
+          output: artifacts/metadata/${{ env.L9_MATRIX_ID }}/artifact-index.json
 
       - name: Upload analysis artifact set
         if: steps.gov.outputs.enabled == 'true'
@@ -204,7 +253,7 @@ jobs:
     name: Publish analysis (Core)
     needs: analyze
     if: needs.analyze.outputs.enabled == 'true'
-    uses: Quantum-L9/l9-ci-core/.github/workflows/publish-analysis.yml@ef138020013f077bcd14bc2e65a28f32a734400f
+    uses: Quantum-L9/l9-ci-core/.github/workflows/publish-analysis.yml@0894c11c69ea6cd1890c09fc905b76ff6dca206e
     permissions:
       actions: read
       checks: write
