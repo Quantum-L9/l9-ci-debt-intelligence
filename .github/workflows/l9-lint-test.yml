@@ -125,18 +125,9 @@ jobs:
           python -c "import xdist" 2>/dev/null || pip install pytest-xdist
           python -c "import pytest_timeout" 2>/dev/null || pip install pytest-timeout
 
-      - name: pytest with coverage
+      - name: pytest (bounded PR selection)
         env:
           TESTING: "true"
         run: |
           set -euo pipefail
-          XDIST_ARGS=()
-          if [ "${PYTEST_PARALLEL}" = "true" ]; then
-            XDIST_ARGS=(-n auto)
-          fi
-          PYTHONPATH=. pytest "${TEST_DIR}" \
-            "${XDIST_ARGS[@]}" \
-            --cov="${SOURCE_DIR}" \
-            --cov-report=xml --cov-report=term-missing \
-            --cov-fail-under="${COVERAGE_THRESHOLD}" \
-            --timeout=300 --tb=short -v
+          make test-fast
