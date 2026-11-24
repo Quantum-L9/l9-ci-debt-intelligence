@@ -1,0 +1,39 @@
+# Copy to <repository>/.github/workflows/resolver-feedback-listener.yml
+#
+# `workflow_run` is the only trigger that can observe another workflow's
+# conclusion without editing that workflow, and it runs with a token scoped to
+# this repository — exactly what the resolver needs to read the failed job logs.
+#
+# List every workflow whose failures should produce feedback. A workflow that is
+# not listed here fails silently from the resolver's point of view.
+#
+# Pin the called workflow to the resolver commit that introduced it (the merge
+# SHA of the reusable-workflow PR). Bump the pin deliberately.
+name: RESOLVER Feedback Listener
+on:
+  workflow_run:
+    workflows:
+      - "Lint"
+      - "L9 Lint and Test"
+      - "L9 Lint and Test (Node)"
+      - "L9 Analysis"
+      - "L9 Nightly"
+      - "Intelligence Phase 1 contracts"
+      - "Intelligence Phase 2 ingestion"
+      - "Intelligence Phase 3 snapshots"
+      - "Intelligence Phase 4 analytics"
+      - "Intelligence Phase 5 compilation"
+      - "Intelligence Phase 6 publication"
+      - "Intelligence Phase 7 effectiveness"
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  feedback:
+    if: github.event.workflow_run.conclusion == 'failure'
+    uses: Quantum-L9/l9-ci-debt-resolver/.github/workflows/resolver-feedback.yml@d30482e8b356d054eaee7b625ea2d1886ed8fefe
+    with:
+      run-id: ${{ github.event.workflow_run.id }}
+      attempt-number: ${{ github.event.workflow_run.run_attempt }}
+    secrets: inherit
