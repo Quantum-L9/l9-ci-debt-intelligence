@@ -1,0 +1,21 @@
+name: PROBE C minimal
+on:
+  push:
+permissions:
+  actions: read
+  checks: write
+  contents: read
+  security-events: write
+jobs:
+  analyze:
+    name: Analyze (semgrep -> SDK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.gov.outputs.mode }}
+      enabled: ${{ steps.gov.outputs.enabled }}
+    steps:
+      - name: noop
+        run: echo ok
