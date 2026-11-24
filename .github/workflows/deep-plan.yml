@@ -5,22 +5,19 @@
 # heavy job, mode=apply runs the suite once, admission before any heavy step,
 # and a successful apply is the nightly receipt for its head_sha.
 #
-# This repository owns its timer (scheduling: self) until Core admits it in
-# .github/nightly/deep-entrypoints.json. A dispatch with mode=apply is the same
-# path Core's org-nightly-dispatch.yml would take, so admission needs no change
-# when that happens.
+# Admitted in Core's .github/nightly/deep-entrypoints.json as l9-ci-debt-intelligence /
+# intelligence-deep/v1 / scheduling: dispatch. Core's org-nightly-dispatch.yml plans at
+# 07:17 UTC and dispatches this file through workflow_dispatch when the
+# default-branch head changed since the last successful apply. The trigger is
+# therefore workflow_dispatch only: no schedule, no push, no pull_request.
 #
 # Semgrep/SARIF analysis is deliberately absent. It belongs to l9-analysis.yml,
 # which runs on pull requests and main. Folding it into the nightly is what
 # dragged checks: write and security-events: write into the nightly caller's
 # permission chain and left the whole workflow unloadable.
 name: Deep nightly
-run-name: deep ${{ inputs.mode || 'apply' }} ${{ inputs.utc_slot || 'self-slot' }} intelligence-deep/v1 ${{ inputs.dispatch_key || 'self' }}
+run-name: deep ${{ inputs.mode }} ${{ inputs.utc_slot }} intelligence-deep/v1 ${{ inputs.dispatch_key }}
 on:
-  schedule:
-    # 07:41 UTC, after Core's 07:17 plan window, so the fleet timer and this
-    # repository never contend for the same minute.
-    - cron: "41 7 * * *"
   workflow_dispatch:
     inputs:
       expected_sha:
@@ -46,7 +43,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: deep-${{ inputs.utc_slot || 'self' }}-intelligence-deep/v1
+  group: deep-${{ inputs.utc_slot }}-intelligence-deep/v1
   cancel-in-progress: false
 jobs:
   admit:
@@ -85,12 +82,6 @@ jobs:
 
           event = os.environ["EVENT_NAME"]
           on_default = os.environ["REF_NAME"] == os.environ["DEFAULT_BRANCH"]
-
-          if event == "schedule":
-              if not on_default:
-                  refuse("REFUSED_NOT_DEFAULT_BRANCH")
-              print("run=true")
-              raise SystemExit(0)
 
           if event != "workflow_dispatch":
               refuse("REFUSED_EVENT")
