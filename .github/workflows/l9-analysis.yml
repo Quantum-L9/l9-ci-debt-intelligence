@@ -31,6 +31,10 @@ permissions:
   actions: read
   checks: write
   contents: read
+  # publish-analysis.yml declares security-events: write (SARIF upload).
+  # A caller must grant every scope the called workflow declares, or
+  # GitHub refuses the caller at load time: zero jobs, startup_failure.
+  security-events: write
 
 concurrency:
   group: l9-analysis-${{ github.workflow }}-${{ github.ref }}
@@ -202,6 +206,7 @@ jobs:
       actions: read
       checks: write
       contents: read
+      security-events: write
     with:
       artifact-name: ${{ needs.analyze.outputs.artifact-name }}
       profile: pr_fast
