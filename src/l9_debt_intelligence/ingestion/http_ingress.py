@@ -50,6 +50,8 @@ from l9_debt_intelligence.contracts.errors import ContractError
 
 from .lsp_telemetry import (
     PRODUCER_CONTRACT as LSP_TELEMETRY_CONTRACT,
+)
+from .lsp_telemetry import (
     LspTelemetryAdapter,
     LspTelemetryError,
 )
@@ -161,7 +163,7 @@ class FeedbackIngress:
             return _error(401, "bearer authentication failed")
         if len(body) > self._max_body_bytes:
             return _error(413, "payload too large")
-        content_type = (self._header(headers, "Content-Type") or "")
+        content_type = self._header(headers, "Content-Type") or ""
         if content_type.split(";", 1)[0].strip().lower() == "application/x-ndjson":
             return self._handle_batch(body)
         try:

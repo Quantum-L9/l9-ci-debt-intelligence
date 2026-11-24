@@ -140,7 +140,9 @@ class BatchAcceptanceTests(TelemetryIngressTestCase):
         self.assertIn(response.status, PRODUCER_SUCCESS)
         self.assertEqual(3, response.document["accepted"])
         self.assertEqual(0, response.document["rejected"])
-        self.assertEqual("l9.ingestion-batch-result/v1", response.document["schema_version"])
+        self.assertEqual(
+            "l9.ingestion-batch-result/v1", response.document["schema_version"]
+        )
 
     def test_a_replayed_batch_is_acknowledged_as_duplicates(self) -> None:
         """Replay must not be a permanent failure: the spool retries batches."""
@@ -180,7 +182,10 @@ class BatchAcceptanceTests(TelemetryIngressTestCase):
 
 class BatchRejectionTests(TelemetryIngressTestCase):
     def test_a_malformed_line_is_a_permanent_rejection(self) -> None:
-        body = ndjson([telemetry_event()]) + b'{"schema_version": "l9.telemetry-event/v1"\n'
+        body = (
+            ndjson([telemetry_event()])
+            + b'{"schema_version": "l9.telemetry-event/v1"\n'
+        )
         response = self.post(body)
         self.assertEqual(422, response.status)
         self.assertNotIn(response.status, PRODUCER_RETRYABLE)
