@@ -32,7 +32,7 @@ permissions:
 jobs:
   feedback:
     if: github.event.workflow_run.conclusion == 'failure'
-    uses: Quantum-L9/l9-ci-debt-resolver/.github/workflows/resolver-feedback.yml@d30482e8b356d054eaee7b625ea2d1886ed8fefe
+    uses: Quantum-L9/l9-ci-debt-resolver/.github/workflows/resolver-feedback.yml@37300d0f867e36481eb339dd66e239ca85ed84c5
     with:
       run-id: ${{ github.event.workflow_run.id }}
       attempt-number: ${{ github.event.workflow_run.run_attempt }}
