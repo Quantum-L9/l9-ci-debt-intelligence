@@ -29,6 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Use Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
       - name: Checkout immutable revision
         uses: actions/checkout@v4
         with:
