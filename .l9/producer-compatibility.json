@@ -41,11 +41,11 @@
       "required_sdk_contract": "l9.integration-contract/v1"
     },
     "Quantum-L9/l9-ci-debt-lsp": {
-      "status": "planned",
-      "planned_reason": "l9-ci-debt-lsp does not emit l9.editor-outcome-event/v1; its active seam is defense-pack consumption, not corpus production.",
+      "status": "active",
       "event_classes": ["editor_diagnostic_outcome", "false_positive_disposition"],
-      "contract_versions": ["l9.editor-outcome-event/v1"],
-      "required_sdk_contract": "l9.integration-contract/v1"
+      "contract_versions": ["l9.telemetry-event/v1"],
+      "required_sdk_contract": "l9.integration-contract/v1",
+      "ingestion_route": "The LSP spools l9.telemetry-event/v1 locally and delivers it as application/x-ndjson batches to POST /api/v1/events. Intelligence validates each document through LspTelemetryAdapter, projects it onto l9.corpus-event/v1, and invokes the existing INTEL-P1 IngestionService. This entry previously named l9.editor-outcome-event/v1, a contract the producer never shipped; the producer's emitted contract is authoritative and the registry follows it."
     }
   },
   "unknown_producer_behavior": "quarantine",

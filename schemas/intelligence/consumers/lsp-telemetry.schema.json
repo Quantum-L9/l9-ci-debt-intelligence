@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l9.consumer.lsp-telemetry/v1",
+  "title": "LSP telemetry event - Intelligence consumer view",
+  "description": "The subset of Quantum-L9/l9-ci-debt-lsp's l9.telemetry-event/v1 that Intelligence reads or carries. Additive producer fields pass through untouched.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "installation_id",
+    "session_id",
+    "sequence",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "l9.telemetry-event/v1"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "diagnostic_shown",
+        "diagnostic_dismissed",
+        "false_positive_disposition",
+        "quick_fix_offered",
+        "quick_fix_applied",
+        "quick_fix_rejected",
+        "quick_fix_outcome",
+        "rule_outcome",
+        "latency_bucket",
+        "pack_activated",
+        "pack_rollback"
+      ]
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "installation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "client_name": {
+      "type": ["string", "null"]
+    },
+    "client_version": {
+      "type": ["string", "null"]
+    },
+    "lsp_version": {
+      "type": ["string", "null"]
+    },
+    "rule_pack_id": {
+      "type": ["string", "null"]
+    },
+    "rule_pack_version": {
+      "type": ["string", "null"]
+    },
+    "corpus_snapshot": {
+      "type": ["string", "null"]
+    },
+    "canonical_rule_id": {
+      "type": ["string", "null"]
+    },
+    "provider_rule_id": {
+      "type": ["string", "null"]
+    },
+    "finding_id": {
+      "type": ["string", "null"]
+    },
+    "analysis_request_id": {
+      "type": ["string", "null"]
+    },
+    "action_id": {
+      "type": ["string", "null"]
+    },
+    "template_id": {
+      "type": ["string", "null"]
+    },
+    "outcome": {
+      "type": ["string", "null"]
+    },
+    "disposition": {
+      "type": ["string", "null"]
+    },
+    "latency_bucket": {
+      "type": ["string", "null"]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

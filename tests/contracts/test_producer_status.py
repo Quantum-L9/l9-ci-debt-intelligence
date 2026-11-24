@@ -24,20 +24,28 @@ RESOLVER_PRODUCER = "Quantum-L9/l9-ci-debt-resolver"
 RESOLVER_CONTRACT = "l9.intelligence-feedback-event/v1"
 HISTORICAL_PRODUCER = "Quantum-L9/l9-ci-debt-intelligence"
 HISTORICAL_CONTRACT = "l9.historical-resolution-event/v1"
+LSP_PRODUCER = "Quantum-L9/l9-ci-debt-lsp"
+LSP_CONTRACT = "l9.telemetry-event/v1"
 
 ACTIVE = {
     SDK_PRODUCER: (SDK_CONTRACT, "static_finding"),
     RESOLVER_PRODUCER: (RESOLVER_CONTRACT, "verification_outcome"),
     HISTORICAL_PRODUCER: (HISTORICAL_CONTRACT, "verification_outcome"),
+    LSP_PRODUCER: (LSP_CONTRACT, "editor_diagnostic_outcome"),
 }
 
 PLANNED = {
     "Quantum-L9/l9-ci-core": "l9.core-gate-event/v1",
     "Quantum-L9/l9-pr-repair": "l9.repair-learning-packet/v1",
-    "Quantum-L9/l9-ci-debt-lsp": "l9.editor-outcome-event/v1",
 }
 
 RETIRED_PHANTOM_CONTRACT = "l9.resolver-corpus-event/v1"
+
+#: The contract this registry used to name for the LSP. The producer never
+#: emitted it -- its spool writes `l9.telemetry-event/v1` -- so the entry sat
+#: `planned` while the wire it described did not exist. The producer's emitted
+#: contract is authoritative; the invented name is retired here.
+RETIRED_LSP_CONTRACT = "l9.editor-outcome-event/v1"
 
 
 class ProducerStatusTests(unittest.TestCase):
@@ -86,6 +94,15 @@ class ProducerStatusTests(unittest.TestCase):
                 producer_id=RESOLVER_PRODUCER,
                 event_class="verification_outcome",
                 producer_contract=RETIRED_PHANTOM_CONTRACT,
+                sdk_contract="l9.integration-contract/v1",
+            )
+
+    def test_the_lsp_may_not_emit_the_contract_the_registry_invented(self) -> None:
+        with self.assertRaises(ProducerCompatibilityError):
+            self.registry.validate(
+                producer_id=LSP_PRODUCER,
+                event_class="editor_diagnostic_outcome",
+                producer_contract=RETIRED_LSP_CONTRACT,
                 sdk_contract="l9.integration-contract/v1",
             )
 
