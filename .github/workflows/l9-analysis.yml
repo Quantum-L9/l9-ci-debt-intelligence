@@ -101,11 +101,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run semgrep (produce raw report)
+      - id: semgrep
+        name: Run semgrep (produce raw report)
         if: steps.gov.outputs.enabled == 'true'
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip semgrep
+          echo "version=$(semgrep --version)" >> "$GITHUB_OUTPUT"
           mkdir -p "artifacts/raw/semgrep/${L9_MATRIX_ID}"
           # ── PER-LANGUAGE RULESETS ──────────────────────────────────────────
           # Python repo:   --config p/python
@@ -139,6 +141,7 @@ jobs:
           output: .l9/runtime/${{ env.L9_MATRIX_ID }}/finding-bundle.json
           root: .
           snapshot-id: ${{ github.sha }}
+          provider-version: ${{ steps.semgrep.outputs.version }}
           revision: ${{ github.sha }}
           strict: ${{ steps.gov.outputs.strict }}
           required: ${{ steps.gov.outputs.required-provider }}
