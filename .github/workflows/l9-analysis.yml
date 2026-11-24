@@ -153,6 +153,44 @@ jobs:
           executable: ${{ steps.sdk.outputs.executable }}
           bundle: .l9/runtime/${{ env.L9_MATRIX_ID }}/finding-bundle.json
 
+      - id: gate
+        name: Evaluate gate (SDK verdict)
+        if: steps.gov.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          # The SDK is the single gate-decision authority. Its canonical
+          # gate-result artifact is staged with the rest of the evidence so the
+          # index can resolve it; enforcement belongs to the publish job.
+          args=(
+            gate evaluate
+            --bundle ".l9/runtime/${L9_MATRIX_ID}/finding-bundle.json"
+            --output ".l9/runtime/${L9_MATRIX_ID}/gate-result.json"
+          )
+          if [ "${L9_STRICT:-}" = "true" ]; then
+            args+=(--strict-unresolved)
+          else
+            args+=(--no-strict-unresolved)
+          fi
+          exit_code=0
+          "${L9_EXECUTABLE}" "${args[@]}" || exit_code=$?
+          case "${exit_code}" in
+            0) status="pass" ;;
+            1) status="fail" ;;
+            6) status="incomplete" ;;
+            *)
+              echo "gate evaluate failed with unexpected exit ${exit_code}" >&2
+              exit "${exit_code}"
+              ;;
+          esac
+          {
+            echo "gate-status=${status}"
+            echo "gate-exit-code=${exit_code}"
+          } >> "$GITHUB_OUTPUT"
+          echo "SDK gate verdict: ${status} (exit ${exit_code})"
+        env:
+          L9_EXECUTABLE: ${{ steps.sdk.outputs.executable }}
+          L9_STRICT: ${{ steps.gov.outputs.strict }}
+
       - name: Project agent-review payload
         if: steps.gov.outputs.enabled == 'true'
         uses: Quantum-L9/l9-ci-core/.github/actions/invoke-sdk@0894c11c69ea6cd1890c09fc905b76ff6dca206e
@@ -174,6 +212,13 @@ jobs:
           bundle: .l9/runtime/${{ env.L9_MATRIX_ID }}/finding-bundle.json
           agent-payload: .l9/runtime/${{ env.L9_MATRIX_ID }}/agent-review-payload.json
           destination-root: artifacts
+
+      - name: Stage gate result with canonical artifacts
+        if: steps.gov.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          cp ".l9/runtime/${L9_MATRIX_ID}/gate-result.json" \
+            "artifacts/l9/${L9_MATRIX_ID}/gate-result.json"
 
       - name: Build artifact manifest
         if: steps.gov.outputs.enabled == 'true'
