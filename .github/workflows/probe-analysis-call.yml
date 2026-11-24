@@ -1,0 +1,24 @@
+name: PROBE analysis call
+on:
+  workflow_dispatch:
+permissions:
+  actions: read
+  checks: write
+  contents: read
+  security-events: write
+jobs:
+  probe:
+    uses: Quantum-L9/l9-ci-core/.github/workflows/publish-analysis.yml@ef138020013f077bcd14bc2e65a28f32a734400f
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+      security-events: write
+    with:
+      artifact-name: probe
+      profile: pr_fast
+      mode: disabled
+      matrix-id: probe
+      governance-digest: probe
+      repository-revision: ${{ github.sha }}
+      workflow-result: success
