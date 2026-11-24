@@ -16,8 +16,12 @@ permissions:
   actions: read
   checks: write
   contents: read
-  # nightly.yml declares packages: read; the caller must grant it.
+  # nightly.yml declares packages: read; its nested analyze-semgrep.yml
+  # declares security-events: write (SARIF upload). A caller must grant
+  # every scope the transitive callee declares, or GitHub rejects the
+  # caller at load time: zero jobs, startup_failure.
   packages: read
+  security-events: write
 
 jobs:
   l9_nightly:
@@ -27,6 +31,7 @@ jobs:
       checks: write
       contents: read
       packages: read
+      security-events: write
     secrets: inherit
     with:
       python-version: "3.12"
