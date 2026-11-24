@@ -187,9 +187,10 @@ jobs:
           sdk-revision: ${{ steps.sdk.outputs.sdk-revision }}
           bundle: ${{ steps.route.outputs.bundle }}
           agent-payload: ${{ steps.route.outputs.agent-payload }}
+          artifact-root: artifacts
           raw-directory: ${{ steps.route.outputs.raw-directory }}
           routing-record: ${{ steps.route.outputs.routing-record }}
-          output: artifacts/metadata/${{ env.L9_MATRIX_ID }}/artifact-manifest.json
+          output: artifacts/metadata/${{ env.L9_MATRIX_ID }}/artifact-index.json
 
       - name: Upload analysis artifact set
         if: steps.gov.outputs.enabled == 'true'
